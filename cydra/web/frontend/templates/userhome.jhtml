@@ -1,0 +1,40 @@
+{% extends "frontend_base.jhtml" %}
+{% from 'util.jhtml' import project_table with context %}
+{% block title %} Home{% endblock %}
+{% block document_ready_js %}
+			$('#projectname').keyup(function() {
+				$(this).doTimeout( 'name_lookup', 500, function() {
+					if (this.val() != '')
+						$.getJSON('{{ url_for('.is_projectname_available') }}', {projectname: this.val()}, function(data) {
+							if (data.available)
+								$('#projectname').removeClass('error').addClass('success');
+							else
+								$('#projectname').removeClass('success').addClass('error');
+						});
+				});
+			});
+{% endblock %}
+{% block content %}
+	<div class="box_left"><div>
+		{% if get_global_permission(cydra_user, 'projects', 'create') %}
+		<h1>Create a new project</h1>
+		<p>A project contains source code repositories, project management tools and controls access permissions. 
+		   The project's name can only contain letters, numbers, as well as dashes and underscores.</p>
+		<form action="{{ url_for('.create_project') }}" method="post">
+		<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    		Name for new project: <input type="text" id="projectname" name="projectname" /> <input type="submit" value="create" />
+    	</form>
+		{% endif %}
+	
+	    <h1>Your projects</h1>
+	    <p>
+	    	{{ project_table(owned_projects) }}
+	    </p>
+    </div></div>
+    <div class="box_right"><div>
+		<h1>Non-public projects you have access to</h1>
+		<p>
+			{{ project_table(other_projects, show_permissions=True) }}
+		</p>
+	</div></div>
+{% endblock %}

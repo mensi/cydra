@@ -1,0 +1,57 @@
+{%- set messages = get_flashed_messages(with_categories=true) -%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% block head %}
+    <title>{% block title %}Cydra{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" type="text/css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='jquery-ui-smoothness/style.css') }}" type="text/css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='jquery-ui-overrides.css') }}" type="text/css" />
+    <script src="{{ url_for('static', filename='jquery.js') }}"></script>
+    <script src="{{ url_for('static', filename='jquery.dotimeout.js') }}"></script>
+    <script src="{{ url_for('static', filename='jquery-ui.js') }}"></script>
+    <script src="{{ url_for('static', filename='jquery-rest-shortcuts.js') }}"></script>
+    <script>
+    	$(document).ready(function(){
+    	{% block document_ready_js %}
+    		{% if messages %}
+    		$('#flashes').fadeTo(3000, 0).slideUp(1000);
+    		{% endif %}
+    	{% endblock %}
+    	});
+    </script> 
+	{% endblock %}
+</head>
+<body>
+	
+	<div id="navigation">
+		{% if cydra_user.is_guest %}
+		<div id="userbox" class="guest">
+			You are not logged in!<br/><a href="{{ url_for('login') }}">Login now</a>
+		</div>
+		{% else %}
+		<div id="userbox" class="authenticated">
+			{{ cydra_user.full_name }}<br /><a href="{{ url_for('frontend.usersettings') }}">Settings</a>
+		</div>
+		{% endif %}
+		
+		{% block navigation %}
+		{% endblock %}
+		
+		<div id="cydra_note">
+			powered by<br />Cydra
+		</div>
+	</div>
+	
+	<div id="content">
+		{% if messages %}
+		<div id="flashes">
+			{% for category, message in messages %}
+				<div class="{{ category }}">{{ message }}</div>
+			{% endfor %}
+		</div>
+		{% endif %}
+		{% block content %}{% endblock %}
+	</div>
+</body>
+</html>

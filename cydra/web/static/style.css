@@ -1,0 +1,215 @@
+html, body {
+	font-family: Arial, Helvetica, sans-serif;
+	background-color: #fff;
+	margin: 0;
+	padding: 0;
+}
+
+#navigation {
+	background-color: #303030;
+	border-bottom: 2pt solid black;
+	color: #ccc;
+	font-weight: bold;
+	font-size: 90%;
+	padding: 0.1em 0.5em;
+}
+
+#navigation div {
+	display: inline-block;
+}
+
+#navigation div#userbox {
+	margin-right: 5em;
+}
+
+#navigation a {
+	display: inline-block;
+	margin-left: 1em;
+	height: 100%;
+	color: #aaccee;
+}
+
+#navigation a:hover {
+	color: #80aacc;
+}
+
+#cydra_note {
+	display: inline-block;
+	float: right;
+	margin-right: 0.5em;
+	font-size: 70%;
+	text-align: center;
+}
+
+#profile_button {
+	display: inline-block;
+	float: right;
+	margin-right: 0.5em;
+}
+
+#content {
+	padding: 0.5em;
+}
+
+div.box_left {
+	float: left;
+	width: 50%;
+}
+
+div.box_left > div {
+	padding-right: 0.25em;
+}
+
+div.box_right {
+	float: right;
+	width: 50%;	
+}
+
+div.box_right > div {
+	padding-left: 0.25em;
+}
+
+input#projectname.success {
+	background-color: #ccffcc;
+}
+
+input#projectname.error {
+	background-color: #ffcccc;
+}
+
+div.clearer {
+	clear: both;
+}
+
+#content h1 {
+	font-size: 110%;
+		
+	background-color: #f0f0f0;
+	border-bottom: 2pt solid #e0e0e0;
+}
+
+#content h2 {
+	min-width: 33%;
+	
+	font-weight: bold;
+	font-size: 90%;
+	padding-bottom: 0.1em;
+	border-bottom: 1pt solid #ccc;
+}
+
+h2.subheader {
+	background-color: #efefef;
+	font-weight: bold;
+	border-bottom: 2pt solid #ccc;
+}
+
+#content p {
+	margin: 0 0 0.25em 0;
+}
+
+#project_features {
+	float: right;
+	min-width: 200pt;
+}
+
+#project_features > h2:first-child {
+	margin-top: 3pt;
+}
+
+a, a:active, a:visited {
+	color: #336699;
+	text-decoration: none;
+}
+
+a:hover {
+	color: #113366;
+	text-decoration: none;
+}
+
+#flashes div {
+	margin: 2pt 0pt;
+	padding: 2pt;
+	padding-left: 10pt;
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: bold;
+}
+
+#flashes div.error {
+	background-color: #ffcccc;
+	border: 1pt solid #cc0000;
+}
+
+#flashes div.success {
+	background-color: #ccffcc;
+	border: 1pt solid #00cc00;
+}
+
+.green_box {
+	background-color: #ccffcc;
+	border: 1pt solid #00cc00;
+}
+
+.red_box {
+	background-color: #ffcccc;
+	border: 1pt solid #cc0000;
+}
+
+span.objperm {
+	font-size: 90%;
+	font-weight: bold;
+	border-radius: 3pt;
+	border: 1px solid #cccccc;
+	padding: 1pt 0;
+	background-color: #f0f0f0;
+}
+
+span.permission {
+	font-weight: normal;
+	border-radius: 3pt;
+	padding: 0pt 3pt;
+}
+
+table.compact {
+	width: 100%;
+}
+
+table.compact td {
+	padding: 0.1em 0.1em;
+}
+
+table.compact thead td {
+	font-weight: bold;
+	font-size: 90%;
+	padding-bottom: 0.1em;
+	border-bottom: 1pt solid #ccc;
+}
+
+table.compact tfoot td {
+	font-size: 90%;
+	padding-top: 0.1em;
+	border-top: 1pt solid #ccc;
+}
+
+table.compact tbody tr:hover {
+	background-color: #efefef;
+}
+
+table.permissiontable td:first-child {
+	width: 15em;
+}
+
+#group_dropdown {
+	width: 15em;
+}
+
+ul.link_dropdown {
+	list-style: none;
+	position: absolute;
+	left: 0; top: 0px;
+	background: #eee;
+	margin: 0; padding: 3pt;
+	display: none;
+	float: left;
+	border: 1px solid #555;
+	border-radius: 3pt;
+}

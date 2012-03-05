@@ -1,0 +1,62 @@
+{% macro prettyprint_object(obj) -%}
+	{% if obj.startswith('repository.git.') %}Git::&quot;{{ obj[15:] }}&quot;{% endif %}
+	{% if obj.startswith('repository.hg.') %}Hg::&quot;{{ obj[14:] }}&quot;{% endif %}
+	{% if obj.startswith('repository.svn.') %}SVN::&quot;{{ obj[15:] }}&quot;{% endif %}
+	
+	{% if obj == 'repository.git' %}Git{% endif %}
+	{% if obj == 'repository.hg' %}Hg{% endif %}
+	{% if obj == 'repository.svn' %}SVN{% endif %}
+	
+	{% if obj == '*' %}project-wide{% endif %}
+{%- endmacro %}
+
+{% macro project_table(projects, show_permissions=False) %}
+<table class="compact projectlist">
+	<thead>
+		<tr>
+			<td>Name</td>
+			{% if show_permissions %}
+			<td>Permissions</td>
+			{% endif %} 
+		</tr>
+	</thead>
+	<tbody>
+		{% for project in projects|sort_attribute(attribute='name') %}
+		<tr>
+			<td><a href="{{ url_for('.project', projectname = project.name) }}">{{ project.name }}</a></td>
+			{% if show_permissions %}
+			<td>
+				{% for object, perms in project.get_permissions(cydra_user, None).items() %}
+					<span class="objperm">{{ prettyprint_object(object) }} {% for perm, value in perms.items() %}{{ render_permission(cydra_user, object, perm, value) }} {% endfor %}</span>
+				{% endfor %}
+			</td>
+			{% endif %}
+		</tr>
+		{% else %}
+		<tr><td{% if show_permissions %} colspan="2"{% endif %}>No projects found</td></tr>
+		{% endfor %}
+	</tbody>
+</table>
+{% endmacro %}
+
+{% macro render_permission(user, object, permission, value) %}
+	<span class="permission {% if value %}green_box{% else %}red_box{% endif %}">{{ permission }}</span>
+{% endmacro %}
+
+{% macro repository_link(repo) -%}
+{% set viewers = get_viewers(repo) %}
+{% if viewers|length == 0 -%}
+	{{ repo.name }}
+{%- elif viewers|length == 1 -%}
+	<a href="{{ viewers[0][1] }}">{{ repo.name }}</a>
+{%- else -%}
+	<div style="position: relative">
+		<a href="{{ viewers[0][1] }}" class="dropdown_link">{{ repo.name }}</a>
+		<ul class="link_dropdown">
+		{% for name, url in viewers %}
+			<li><a href="{{ url }}">{{ name|escape }}</a></li>
+		{% endfor %}
+		</ul>
+	</div>
+{%- endif %}
+{%- endmacro %}

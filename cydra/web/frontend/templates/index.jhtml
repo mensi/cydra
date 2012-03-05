@@ -1,0 +1,8 @@
+{% extends "frontend_base.jhtml" %}
+{% block title %} Home{% endblock %}
+{% block content %}
+    <h1>Cydra</h1>
+    <p>
+    	Welcome to Cydra
+    </p>
+{% endblock %}

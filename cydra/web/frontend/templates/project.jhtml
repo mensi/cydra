@@ -1,0 +1,463 @@
+{% extends "frontend_base.jhtml" %}
+{% from 'util.jhtml' import prettyprint_user, render_permission, repository_link with context %}
+{% block title %} Project: {{ project.name }}{% endblock %}
+{% block document_ready_js %}
+{{ super() }}
+
+			/*
+			   Project permission management stuff
+			*/
+			var adduser_clear = function() {
+				$("#adduser_details").hide();
+				$("#adduser_form_fullname").text("");
+				$("#adduser_form").removeData("username");
+				$("#adduser_form input[type=checkbox]").prop('checked', false);
+			};
+			
+			var adduser_jsoncallback = function(data) {
+				var form_element = $("#adduser_form");
+				
+				$("#adduser_form_fullname").text(data.user_full_name);
+				
+				form_element.data("username", data.username);
+				$("#adduser_dialog input[name=userid]").val(data.userid);
+				
+				$.each(data.perms, function(key, val) {
+					form_element.find("input[name="+key+"]").prop('checked', val);
+				});
+				
+				$("#adduser_details").show();
+			};
+			
+			var adduser_lookuphandler = function() {
+				var form_element = $("#adduser_form");
+			
+				if (this.val() != '' && this.val() != form_element.data("username"))
+					$.getJSON('{{ url_for('.project_perms', projectname=project.name) }}', {username: this.val()}, adduser_jsoncallback).error(adduser_clear);
+			};
+			
+			var adduser_dotimeout = function(obj, timeout) {
+				obj = $(obj);
+				if (obj.val() == '')
+				{
+					adduser_clear();
+				} else if (obj.val() != $("#adduser_form").data("username")) {
+					adduser_clear();
+					
+					obj.doTimeout('user_lookup', timeout, adduser_lookuphandler);
+				}
+			};
+			
+			$("#adduser_dialog input[name=username]").keyup(function() {
+				adduser_dotimeout(this, 500);
+			});
+			$("#adduser_dialog input[name=username]").change(function() {
+				adduser_dotimeout(this, 10);
+			});
+
+			$("#adduser_dialog").dialog({
+				autoOpen: false,
+				height: 300,
+				width: 350,
+				modal: true,
+				buttons: {
+					"Set Permissions": function() { 
+							$("#adduser_form").submit();
+					},
+					"Cancel": function() {
+						$(this).dialog("close");
+					}
+				},
+				close: adduser_clear
+			});
+			
+			$("#adduser_button")
+				.button()
+				.click(function() {
+					$("#adduser_user_entry").show();
+					$("#adduser_dialog input[name=username]").val("");
+					$("#adduser_dialog input[name=userid]").val("");
+					$("#adduser_dialog").dialog("open");
+				});
+				
+			$(".modify_perm_button").each(function(i) {
+				var button = $(this);
+				var userid = button.text();
+				
+				button.text("modify");
+				button.button();
+				button.click(function() {
+					$("#adduser_user_entry").hide();
+					$("#adduser_dialog input[name=userid]").val(userid);
+					$("#adduser_dialog").dialog("open");
+					$.getJSON('{{ url_for('.project_perms', projectname=project.name) }}', {userid: userid}, adduser_jsoncallback).error(adduser_clear);
+				});
+			});
+
+			/*
+			   Project group permission management stuff
+			*/
+			var groupperm_clear = function() {
+				$("#groupperm_details").hide();
+				$("#groupperm_groupname").text("");
+				$("#groupperm_form").removeData("custom_groupid");
+				$("#groupperm_form input[type=checkbox]").prop('checked', false);
+			};
+			
+			var groupperm_jsoncallback = function(data) {
+				var form_element = $("#groupperm_form");
+				
+				$("#groupperm_groupname").text(data.group_name);
+				
+				form_element.data("custom_groupid", data.groupid);
+				$("#groupperm_dialog input[name=groupid]").val(data.groupid);
+				
+				$.each(data.perms, function(key, val) {
+					form_element.find("input[name="+key+"]").prop('checked', val);
+				});
+				
+				$("#groupperm_details").show();
+			};
+			
+			var groupperm_lookuphandler = function() {
+				var form_element = $("#groupperm_form");
+			
+				if (this.val() != '' && this.val() != form_element.data("custom_groupid"))
+					$.getJSON('{{ url_for('.project_group_perms', projectname=project.name) }}', {groupid: this.val()}, groupperm_jsoncallback).error(groupperm_clear);
+			};
+			
+			var groupperm_dotimeout = function(obj, timeout) {
+				obj = $(obj);
+				if (obj.val() == '')
+				{
+					groupperm_clear();
+				} else if (obj.val() != $("#groupperm_form").data("custom_groupid")) {
+					groupperm_clear();
+					
+					obj.doTimeout('group_lookup', timeout, groupperm_lookuphandler);
+				}
+			};
+			
+			$("#groupperm_dialog input[name=custom_groupid]").keyup(function() {
+				groupperm_dotimeout(this, 500);
+			});
+			$("#groupperm_dialog input[name=custom_groupid]").change(function() {
+				groupperm_dotimeout(this, 10);
+			});
+			
+			$("#group_dropdown").change(function() {
+				groupperm_clear();
+				var selected = $(this).find("option:selected").val();
+				$.getJSON('{{ url_for('.project_group_perms', projectname=project.name) }}', {groupid: selected}, groupperm_jsoncallback).error(groupperm_clear);
+			});
+
+			$("#groupperm_dialog").dialog({
+				autoOpen: false,
+				height: 300,
+				width: 350,
+				modal: true,
+				buttons: {
+					"Set Permissions": function() { 
+							$("#groupperm_form").submit();
+					},
+					"Cancel": function() {
+						$(this).dialog("close");
+					}
+				},
+				close: groupperm_clear
+			});
+			
+			$("#addgroup_button")
+				.button()
+				.click(function() {
+					$("#group_dropdown").change();
+					$("#groupperm_add_entry").show();
+					$("#groupperm_dialog input[name=username]").val("");
+					$("#groupperm_dialog input[name=userid]").val("");
+					$("#groupperm_dialog").dialog("open");
+				});
+				
+			$(".modify_group_perm_button").each(function(i) {
+				var button = $(this);
+				var groupid = button.text();
+				
+				button.text("modify");
+				button.button();
+				button.click(function() {
+					$("#groupperm_add_entry").hide();
+					$("#groupperm_dialog input[name=groupid]").val(groupid);
+					$("#groupperm_dialog").dialog("open");
+					$.getJSON('{{ url_for('.project_group_perms', projectname=project.name) }}', {groupid: groupid}, groupperm_jsoncallback).error(groupperm_clear);
+				});
+			});
+			
+			/*
+			   Repository creation
+			*/
+			{% for repo_type in project.get_repository_types() %}
+			
+			$("#add_{{ repo_type.repository_type }}_repository_dialog").dialog({
+				autoOpen: false,
+				height: 300,
+				width: 350,
+				modal: true,
+				buttons: {
+					"Create": function() { 
+							$("#add_{{ repo_type.repository_type }}_repository_form").submit();
+					},
+					"Cancel": function() {
+						$(this).dialog("close");
+					}
+				}
+			});
+			
+			$("#add_{{ repo_type.repository_type }}_repository_button")
+				.button()
+				.click(function() {
+					$("#add_{{ repo_type.repository_type }}_repository_dialog").dialog("open");
+				});
+				
+			{% endfor %}
+			
+			/* 
+				Repository viewer dropdowns 
+			*/
+			$("a.dropdown_link").click(function() {
+				$(this).parent().find("ul.link_dropdown").css("top", $(this).outerHeight()).fadeToggle();
+				return false;
+				});
+				
+			$("#edit_repo_param_dialog").dialog({
+				autoOpen: false,
+				height: 150,
+				width: 350,
+				modal: true,
+				buttons: {
+					"Save": function() { 
+							$("#edit_repo_param_form").submit();
+					},
+					"Cancel": function() {
+						$(this).dialog("close");
+					}
+				}
+			});
+			
+			/*
+				Global
+			*/
+			
+			$(".repository_table a.button").button();
+			$("button").button();
+{% endblock %}
+{% block head %}
+{{ super() }}
+<script>
+	function edit_param(type, name, param, value)
+	{
+		var form = $("#edit_repo_param_form");
+		form.find("input[name=repository_type]").val(type);
+		form.find("input[name=repository_name]").val(name);
+		form.find("input[name=param]").val(param);
+		form.find("input[name=value]").val(value);
+		$("#edit_repo_param_dialog").dialog("open");
+	}
+</script>
+{% endblock %}
+{% block content %}
+<div class="box_left"><div>
+	<h1>Project &quot;{{ project.name }}&quot;</h1>
+	<p>{% if project.owner.userid == cydra_user.userid %}You are the owner of this project{% else %}This project is owned by {{ project.owner.full_name }}{% endif %}</p>
+	{% if featurelist %}
+	<table class="compact">
+		<thead>
+			<tr>
+				<td>Feature</td>
+				<td>Actions</td>
+			</tr>
+		</thead>
+		<tbody>
+			{% for fitem in featurelist|sort %}
+			<tr>
+				<td style="padding-right: 15pt">{{ fitem[0] }}</td>
+				<td style="text-align: right">{% for action in fitem[1] %}<a href="{{ action.href|urlize }}">{{ action.name }}</a>{% endfor %}</td>
+			</tr>
+			{% endfor %}
+		</tbody> 
+	</table>
+	{% endif %}
+	
+	{% if project.get_repository_types().can_create(project, cydra_user)|any %}
+	<h2>Create Repository</h2>
+	{% for repo_type in project.get_repository_types() %}
+		{% if repo_type.can_create(project, cydra_user) %}<button id="add_{{ repo_type.repository_type }}_repository_button" type="button">{{ repo_type.repository_type }}</button>{% endif %}
+	{% endfor %}
+	{% endif %}
+	
+	{% if project_actions %}
+	<h2>Project Actions</h2>
+    {% for action in project_actions %}
+    <button onclick="$.{{ action[2] }}Go('{{ url_for(action[1], projectname=project.name) }}', {});">{{ action[0] }}</button> 
+    {% endfor %}
+    {% endif %}
+</div></div>
+
+<div class="box_right"><div>
+{% set groupperms = project.get_group_permissions(None, '*') %}
+    
+    <h1>Project Access Permissions</h1>
+    <p>
+    	<table class="compact permissiontable">
+    		<thead>
+    			<tr>
+    				<td>User</td>
+    				<td>Access rights</td>
+    				<td></td>
+    			</tr>
+    		</thead>
+    		<tfoot>
+    			<tr>
+    				<td colspan="2"></td><td style="text-align: right;">{% if project.get_permission(cydra_user, '*', 'admin') %}{% if not groupperms %}<button id="addgroup_button" type="button">add group</button> {% endif %}<button id="adduser_button" type="button">add / modify</button>{% endif %}</td>
+    			</tr>
+    		</tfoot>
+    		<tbody>
+    			{% for user, perms in project.get_permissions(None, '*')|sort_user_keyed_dict %}
+    			<tr>
+    				<td {% if user.is_guest %}style="font-style: italic;"{% endif %}>{{ user.full_name }}</td>
+    				<td>{% for perm, value in perms.items() %}{{ render_permission(user, '*', perm, value) }}{% endfor %}</td>
+    				<td style="text-align: right;">{% if project.get_permission(cydra_user, '*', 'admin') %}<button type="button" class="modify_perm_button">{{ user.userid }}</button>{% endif %}</td>
+    			</tr>
+    			{% endfor %}
+    		</tbody>
+    	</table>
+    	
+    	{% if groupperms %}
+    	<table class="compact permissiontable">
+    		<thead>
+    			<tr>
+    				<td>Group</td>
+    				<td>Access rights</td>
+    				<td></td>
+    			</tr>
+    		</thead>
+    		<tfoot>
+    			<tr>
+    				<td colspan="2"></td><td style="text-align: right;">{% if project.get_permission(cydra_user, '*', 'admin') %}<button id="addgroup_button" type="button">add / modify</button>{% endif %}</td>
+    			</tr>
+    		</tfoot>
+    		<tbody>
+    			{% for group, perms in groupperms.items() %}
+    			<tr>
+    				<td>{{ group.name }}</td>
+    				<td>{% for perm, value in perms.items() %}{{ render_permission(group, '*', perm, value) }}{% endfor %}</td>
+    				<td style="text-align: right;">{% if project.get_permission(cydra_user, '*', 'admin') %}<button type="button" class="modify_group_perm_button">{{ group.groupid }}</button>{% endif %}</td>
+    			</tr>
+    			{% endfor %}
+    		</tbody>
+    	</table>
+    	{% endif %}
+    </p>
+
+</div></div>
+<div class="clearer"></div>
+    {% for repo_type in project.get_repository_types() %}
+    {% if repo_type.get_repositories(project) %}
+    <h1>{{ repo_type.repository_type_title }} Repositories</h1>
+    <p>
+    	<table class="compact repository_table">
+    		<thead>
+    			<tr>
+    				<td>Name</td>
+    				{% for param in repo_type.get_params() %}
+    				<td>{{ param.name }}</td>
+    				{% endfor %}
+    				<td></td>
+    			</tr>
+    		</thead>
+    		<tbody>
+    			{% for repo in repo_type.get_repositories(project)|sort_attribute('name') %}
+    			<tr>
+    				<td>{{ repository_link(repo) }}</td>
+    				{% for param in repo_type.get_params() %}
+    				<td>{{ repo.get_param(param.keyword)|escape }}{% if repo.can_modify_params(cydra_user) %} <a href="#" class="param_edit_button" onclick="edit_param('{{ repo_type.repository_type }}', '{{ repo.name }}', '{{ param.keyword }}', '{{ repo.get_param(param.keyword)|escape_js }}'); return false;">edit</a>{% endif %}</td>
+    				{% endfor %}
+    				<td style="text-align: right;">
+    				{% for action in get_repository_actions(repo) %}
+					<button onclick="$.{{ action[2] }}Go('{{ url_for(action[1], projectname=project.name, repositorytype=repo.type, repositoryname=repo.name) }}', {});">{{ action[0] }}</button> 
+					{% endfor %}
+					{% if repo.can_delete(cydra_user) %}<button onclick="$.postGo('{{ url_for('.delete_repository', projectname=project.name) }}', {repository_type: '{{ repo.type}}', repository_name: '{{repo.name}}' });">delete</button>{% endif %}
+    				</td>
+    			</tr>
+    			{% else %}
+    			<tr>
+    				<td colspan="{{ repo_type.get_params()|length + 2 }}">No repositories of this type</td>
+    			</tr>
+    			{% endfor %}
+    		</tbody>
+    	</table>
+    </p>
+    {% endif %}
+    {% endfor %}
+
+    
+<!-- dialogs -->
+    
+    {% for repo_type in project.get_repository_types() %}
+    <div id="add_{{ repo_type.repository_type }}_repository_dialog" title="Add {{ repo_type.repository_type_title }} Repository">
+    	<form id="add_{{ repo_type.repository_type }}_repository_form" action="{{ url_for('.create_repository', projectname = project.name, repository_type = repo_type.repository_type) }}" method="post">
+    	<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+	    	Name: <input type="text" name="repository_name" /><br />
+	    	{% for param in repo_type.get_params() %}
+    		{{ param.name }}: <input type="text" name="{{ param.keyword }}" /><br />
+    		{% endfor %}
+    	</form>
+    </div>
+    {% endfor %}
+    
+    <div id="edit_repo_param_dialog" title="Edit">
+    	<form id="edit_repo_param_form" action="{{ url_for('.set_repository_param', projectname = project.name) }}" method="post">
+    	<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+	    	<input type="text" name="value" />
+	    	<input type="hidden" name="param" />
+	    	<input type="hidden" name="repository_type" />
+	    	<input type="hidden" name="repository_name" />
+    	</form>
+    </div>
+    
+    <div id="adduser_dialog" title="Modify Project Permissions">
+    	<form id="adduser_form" action="{{ url_for('.define_user_project_perms', projectname = project.name) }}" method="post">
+    	<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    		<div id="adduser_user_entry">
+	    	Username: <input type="text" name="username" /><br />
+	    	<br /><input type="hidden" name="userid" value="" />
+	    	</div>
+	    	<div style="position: relative;" id="adduser_details">
+	    		<strong>Details</strong><br />
+		    	Name: <span id="adduser_form_fullname"></span><br />
+		    	<strong>Permissions</strong><br />
+		    	<input type="checkbox" name="write" value="true" />write <input type="checkbox" name="read" value="true" />read
+		    	<input type="checkbox" name="admin" value="true" />admin <input type="checkbox" name="create" value="true" />create
+	    	</div>
+    	</form>
+    </div>
+    
+    <div id="groupperm_dialog" title="Modify Project Permissions">
+    	<form id="groupperm_form" action="{{ url_for('.define_group_project_perms', projectname = project.name) }}" method="post">
+    	<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    		<input type="hidden" name="groupid" value="" />
+    		<div id="groupperm_add_entry">
+		    	Group: <select id="group_dropdown">{% for group in cydra_user.groups %}<option value="{{ group.groupid }}">{{ group.name }} </option>{% endfor %}</select><br />
+		    	<div id="groupperm_custom" style="display: none">
+		    		<input type="text" id="custom_groupid" /><br />
+		    	</div>
+		    	<br />
+	    	</div>
+	    	<div style="position: relative;" id="groupperm_details">
+	    		<strong>Details</strong><br />
+		    	Name: <span id="groupperm_groupname"></span><br />
+		    	<strong>Permissions</strong><br />
+		    	<input type="checkbox" name="write" value="true" />write <input type="checkbox" name="read" value="true" />read
+		    	<input type="checkbox" name="admin" value="true" />admin <input type="checkbox" name="create" value="true" />create
+	    	</div>
+    	</form>
+    </div>
+{% endblock %}

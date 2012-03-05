@@ -1,0 +1,11 @@
+.ui-button .ui-button-text {
+	line-height: normal;
+}
+
+.ui-widget {
+    font-size: 10pt;
+}
+
+.ui-button-text-only .ui-button-text {
+    padding: 2pt 4pt;
+}

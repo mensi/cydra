@@ -1,0 +1,50 @@
+{% extends "frontend_base.jhtml" %}
+{% from 'util.jhtml' import prettyprint_user, render_permission, repository_link with context %}
+{% block title %} {{ cydra_user.full_name }}: Settings{% endblock %}
+{% block content %}
+{% if pubkey_support %}
+<h1>Public Keys</h1>
+<p>
+	<table class="compact">
+		<thead>
+			<tr>
+				<td>Name</td>
+				<td>Fingerprint</td>
+				<td></td>
+			</tr>
+		</thead>
+		<tbody>
+		{% for key in pubkeys %}
+			<tr>
+				<td>{{ key.name }}</td>
+				<td>{{ key.fingerprint }}</td>
+				<td><button onclick="$.postGo('{{ url_for('.remove_pubkey') }}', {fingerprint: '{{ key.fingerprint}}'});">delete</button></td>
+			<tr>
+		{% else %}
+			<tr>
+				<td colspan="3">No keys registered</td>
+			</tr>
+		{% endfor %}
+		</tbody>
+	</table>
+</p>
+<p style="margin-top: 10pt;">To add a new public key for your account, give it a name and supply it's public key in OpenSSH's authorized_keys format:
+<form action="{{ url_for('.add_pubkey') }}" method="POST">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+	<table style="width: 100%">
+		<tr>
+			<td style="width: 8em;">Name:</td>
+			<td><input type="text" name="key_name" style="width: 100%;" /></td>
+		</tr>
+		<tr>
+			<td style="width: 8em;">Public Key:</td>
+			<td><textarea name="key_data" style="width: 100%;"></textarea></td>
+		</tr>
+	</table>
+	<input type="submit" value="add" />
+</form>
+</p>
+
+{% endif %}
+
+{% endblock %}

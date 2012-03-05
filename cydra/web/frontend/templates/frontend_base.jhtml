@@ -1,0 +1,7 @@
+{% extends "base.jhtml" %}
+{% block navigation %}
+	{{ super() }}
+	{% if not cydra_user.is_guest %}
+	<a href="{{ url_for('.userhome') }}">Projects</a> 
+	{% endif %}
+{% endblock %}

@@ -1,0 +1,6 @@
+include COPYING
+include README.md
+include cydra/repository/scripts/*
+recursive-include cydra/web/templates *
+recursive-include cydra/web/static *
+recursive-include cydra/web/frontend/templates *
