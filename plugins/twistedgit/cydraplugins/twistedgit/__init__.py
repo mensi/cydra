@@ -28,14 +28,31 @@ from cydra.component import ExtensionPoint
 from cydra.permission import IUserTranslator, IUserAuthenticator
 from cydra.component import Component, implements
 from cydra.datasource import IPubkeyStore
+from cydra.web.frontend.hooks import IRepositoryViewerProvider, IProjectFeaturelistItemProvider
 
 from twistedgit import ssh
 
 import logging
 logger = logging.getLogger(__name__)
 
+
+import logging
+logger = logging.getLogger(__name__)
+
 class TwistedGit(Component):
-    pass
+    """Cydra component for integration between TwistedGit and Cydra"""
+
+    implements(IRepositoryViewerProvider)
+
+    def __init__(self):
+        pass
+
+    def get_repository_viewers(self, repository):
+        """Add clone URL to the viewers"""
+        if 'url_base' not in self.component_config:
+            logger.warning("url_base is not configured!")
+        elif repository.type == 'git':
+            return ('Git over ssh', self.component_config['url_base'] + '/' + repository.project.name + '/' + repository.name + '.git')
 
 class CydraHelper(object):
 
