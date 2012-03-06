@@ -212,4 +212,5 @@ ul.link_dropdown {
 	float: left;
 	border: 1px solid #555;
 	border-radius: 3pt;
+	z-index: 9999;
 }
