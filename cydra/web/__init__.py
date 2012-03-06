@@ -50,6 +50,15 @@ def create_app(cyd=None):
     theme_providers = ExtensionPoint(IThemeProvider, component_manager=cyd)
     app.config['cydra_themes'] = dict([(theme.name, theme) for theme in theme_providers.get_themes()])
 
+    default_theme = cyd.config.get('web').get('default_theme')
+    if default_theme is not None and default_theme in app.config['cydra_themes']:
+        default_theme = app.config['cydra_themes'][default_theme]
+        logger.debug("Default theme: %s", default_theme.name)
+    else:
+        default_theme = None
+    theme_detector = ThemeDetector(default_theme)
+    app.before_request(theme_detector)
+
     # replace default loader
     app.jinja_options = Flask.jinja_options.copy()
     app.jinja_options['loader'] = ThemedTemplateLoader(app)
@@ -112,6 +121,17 @@ def add_shorthands_to_context():
     from flask import request
 
     return dict(cydra_user=request.environ['cydra_user'])
+
+class ThemeDetector(object):
+    def __init__(self, default_theme=None):
+        self.default_theme = default_theme
+
+    def __call__(self):
+        from flask import request, g
+
+        if self.default_theme is not None:
+            g.theme = self.default_theme
+
 
 def login():
     from flask import request, redirect, url_for
