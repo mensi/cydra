@@ -23,14 +23,14 @@ from setuptools import setup, find_packages
 
 setup(
     name='Cydra',
-    version='0.1.0',
+    version='0.1.1',
     description='Code hosting platform',
     long_description="Cydra provides a platform to build code hosting services similar to systems like sourceforge or google code",
     author='Manuel Stocker',
     author_email='mensi@mensi.ch',
     license='GPL',
     url='http://www.cydra.org',
-    download_url='http://www.cydra.org/download/cydra-0.1.0.tar.gz',
+#    download_url='http://www.cydra.org/download/cydra-0.1.0.tar.gz',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Environment :: Web Environment',
