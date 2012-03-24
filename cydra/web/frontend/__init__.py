@@ -319,6 +319,9 @@ def project_perms(projectname):
     if project is None:
         raise NotFound("Unknown Project")
 
+    if not project.get_permission(cydra_user, '*', 'read'):
+        raise InsufficientPermissions()
+
     username = request.args.get('username', None)
     userid = request.args.get('userid', None)
 
@@ -341,6 +344,9 @@ def project_group_perms(projectname):
     project = cydra_instance.get_project(projectname)
     if project is None:
         raise NotFound("Unknown Project")
+
+    if not project.get_permission(cydra_user, '*', 'read'):
+        raise InsufficientPermissions()
 
     groupid = request.args.get('groupid', None)
 
