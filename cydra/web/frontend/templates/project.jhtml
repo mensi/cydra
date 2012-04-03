@@ -296,7 +296,7 @@
 	{% if project_actions %}
 	<h2>Project Actions</h2>
     {% for action in project_actions %}
-    <button onclick="$.{{ action[2] }}Go('{{ url_for(action[1], projectname=project.name) }}', {});">{{ action[0] }}</button> 
+    <button onclick="$.{{ action[2] }}Go('{{ url_for(action[1], projectname=project.name) }}', { {% if action[2] == 'post' %}'_csrf_token': '{{ csrf_token() }}'{% endif %} });">{{ action[0] }}</button> 
     {% endfor %}
     {% endif %}
 </div></div>
@@ -382,9 +382,9 @@
     				{% endfor %}
     				<td style="text-align: right;">
     				{% for action in get_repository_actions(repo) %}
-					<button onclick="$.{{ action[2] }}Go('{{ url_for(action[1], projectname=project.name, repositorytype=repo.type, repositoryname=repo.name) }}', {});">{{ action[0] }}</button> 
+					<button onclick="$.{{ action[2] }}Go('{{ url_for(action[1], projectname=project.name, repositorytype=repo.type, repositoryname=repo.name) }}', { {% if action[2] == 'post' %}'_csrf_token': '{{ csrf_token() }}'{% endif %} });">{{ action[0] }}</button> 
 					{% endfor %}
-					{% if repo.can_delete(cydra_user) %}<button onclick="$.postGo('{{ url_for('.delete_repository', projectname=project.name) }}', {repository_type: '{{ repo.type}}', repository_name: '{{repo.name}}' });">delete</button>{% endif %}
+					{% if repo.can_delete(cydra_user) %}<button onclick="$.postGo('{{ url_for('.delete_repository', projectname=project.name) }}', {repository_type: '{{ repo.type}}', repository_name: '{{repo.name}}', '_csrf_token': '{{ csrf_token() }}'});">delete</button>{% endif %}
     				</td>
     			</tr>
     			{% else %}
