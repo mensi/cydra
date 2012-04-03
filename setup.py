@@ -23,7 +23,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='Cydra',
-    version='0.1.2',
+    version='0.1.3',
     description='Code hosting platform',
     long_description="Cydra provides a platform to build code hosting services similar to systems like sourceforge or google code",
     author='Manuel Stocker',
