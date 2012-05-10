@@ -48,12 +48,12 @@ Apache SVN configuration::
 	    Require                 valid-user
 	
 	    <Limit GET HEAD OPTIONS CONNECT POST>
-	            Require group read
+	            Require group read admin
 	    </Limit>
 	
 	    <Limit GET HEAD OPTIONS CONNECT POST PROPFIND PUT DELETE \
 	      PROPPATCH MKCOL COPY MOVE LOCK UNLOCK>
-	            Require group write
+	            Require group write admin
 	    </Limit>
 	</Location>
 	
