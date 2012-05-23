@@ -18,7 +18,7 @@
 			<tr>
 				<td>{{ key.name }}</td>
 				<td>{{ key.fingerprint }}</td>
-				<td><button onclick="$.postGo('{{ url_for('.remove_pubkey') }}', {fingerprint: '{{ key.fingerprint}}'});">delete</button></td>
+				<td><button onclick="$.postGo('{{ url_for('.remove_pubkey') }}', {fingerprint: '{{ key.fingerprint}}', '_csrf_token': '{{ csrf_token() }}'});">delete</button></td>
 			<tr>
 		{% else %}
 			<tr>
