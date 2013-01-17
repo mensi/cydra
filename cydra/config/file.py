@@ -21,6 +21,12 @@ import os.path
 import json
 import codecs
 
+load_yaml = None
+try:
+    from yaml import safe_load as load_yaml
+except:
+    pass
+
 from cydra.component import Component, implements
 from cydra.config import IConfigurationProvider
 
@@ -28,7 +34,7 @@ class ConfigurationFile(Component):
     implements(IConfigurationProvider)
 
     def get_config(self):
-        cconfig = self.compmgr.config.get_component_config(self.get_component_name(), {})
+        cconfig = self.get_component_config()
         config = {}
         cfiles = []
 
@@ -51,12 +57,18 @@ class ConfigurationFile(Component):
                      'cydra.conf']
 
         locations = [os.path.abspath(location) for location in locations]
-        #print "Config locations:", locations
         return [location for location in locations if os.path.exists(location)]
 
     def load_file(self, filename):
         cfile = open(filename, "r")
         try:
             return json.load(cfile)
+        except ValueError:
+            # it is not in JSON format, try YAML if available
+            if load_yaml:
+                try:
+                    return load_yaml(cfile)
+                except:
+                    pass
         finally:
             cfile.close()
