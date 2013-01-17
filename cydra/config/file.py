@@ -30,6 +30,9 @@ except:
 from cydra.component import Component, implements
 from cydra.config import IConfigurationProvider
 
+import logging
+logger = logging.getLogger(__name__)
+
 class ConfigurationFile(Component):
     implements(IConfigurationProvider)
 
@@ -67,8 +70,12 @@ class ConfigurationFile(Component):
             # it is not in JSON format, try YAML if available
             if load_yaml:
                 try:
+                    cfile.seek(0)
                     return load_yaml(cfile)
                 except:
                     pass
         finally:
             cfile.close()
+        
+        logger.error("Unable to parse configfile: " + filename)
+        return {}
