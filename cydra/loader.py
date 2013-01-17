@@ -53,10 +53,12 @@ def load_eggs(entry_point_name):
 
             try:
                 entry.load(require=True)
+            except ImportError, e:
+                logger.warn("Loading %s failed, probably because of unmet dependencies: %s", entry.name, str(e))
             except Exception, e:
                 logger.exception("Error loading: %s", entry)
             else:
-                logger.debug("Loaded module %s from %s:", entry.module_name, entry.dist.location)
+                logger.debug("Loaded module %s from %s", entry.module_name, entry.dist.location)
 
     return _load_eggs
 
