@@ -22,10 +22,10 @@ __all__ = ['Configuration', 'MergeException', 'IConfigurationProvider']
 from cydra.component import ExtensionPoint, Interface, Component
 from cydra.loader import load_components
 
+import logging
+logger = logging.getLogger(__name__)
+
 default_configuration = {
-    'components': {
-        'cydra.config.file.ConfigurationFile': True
-    },
     'web': {
         'auth_realm': 'Cydra'
     }
@@ -62,7 +62,9 @@ class Configuration(Component):
         }
     """
 
-    configuration_providers = ExtensionPoint(IConfigurationProvider)
+    configuration_providers = ExtensionPoint(IConfigurationProvider, caching=False)
+    config_discovery = False
+    loaded_providers = set()
 
     def __init__(self):
         """Initialize Configuration"""
@@ -86,15 +88,25 @@ class Configuration(Component):
             return ret
 
     def is_component_enabled(self, component):
-        return bool(self._data.setdefault('components', {}).get(component, False))
+        """Returns True if the component has a configuration enty or
+        if we are in config discovery mode and the component has not been
+        specifically disabled."""
+        enabled = self._data.setdefault('components', {}).get(component, None)
+        
+        logger.debug("is_component_enabled(%s) %r %r" % (component, self.config_discovery, enabled))
+        
+        if self.config_discovery and enabled != False:
+            return True
+        
+        return bool(enabled)
 
     def load(self, config=None):
         """Load configuration data into the config tree
         
         If config is None, the default configuration will be loaded
         """
-        providers = set(self.configuration_providers) # copy the providers for later reference
-
+        self.config_discovery = True
+        
         if config is not None:
             self._load(config)
         elif self._data == {} or self._data == {'components':{}}: #only load default config if config is empty
@@ -102,8 +114,11 @@ class Configuration(Component):
 
         # if new configuration providers have been enabled, query them
         for provider in self.configuration_providers:
-            if provider not in providers:
+            if provider not in self.loaded_providers:
+                self.loaded_providers.add(provider)
                 self.load(provider.get_config())
+        
+        self.config_discovery = False
 
     def _load(self, config):
 

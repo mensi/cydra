@@ -45,7 +45,8 @@ setup(
         'setuptools>=0.6b1',
         'Flask',
         'flask-csrf',
-        'Werkzeug'
+        'Werkzeug',
+        'pyyaml'
     ],
     extras_require={},
 
@@ -56,9 +57,11 @@ setup(
         cydra-git-post-receive = cydra.repository.git:post_receive_hook
         cydra-hg-commit = cydra.repository.hg:commit_hook
         cydra-svn-commit = cydra.repository.svn:commit_hook
+        
+        [cydra.config]
+        cydra.config.file = cydra.config.file
 
         [cydra.plugins]
-        cydra.config.file = cydra.config.file
         cydra.datasource.mongo = cydra.datasource.mongo
         cydra.repository.git = cydra.repository.git
         cydra.repository.hg = cydra.repository.hg

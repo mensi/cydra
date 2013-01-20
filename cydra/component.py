@@ -296,7 +296,9 @@ class ComponentManager(object):
         return the existing instance if the component has already been
         activated.
         """
+        logger.debug("Loading Component %s" % cls.__name__)
         if not self.is_enabled(cls):
+            logger.debug("Component %s is not enabled" % cls.__name__)
             return None
         component = self.components.get(cls)
         if not component:

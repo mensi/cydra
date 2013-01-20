@@ -49,12 +49,13 @@ class Cydra(Component, ComponentManager):
 
         ComponentManager.__init__(self)
 
-        load_components(self)
+        load_components(self, 'cydra.config')
 
         self.config = Configuration(self)
         self.config.load(config)
-
         logger.debug("Configuration loaded: %s", repr(self.config._data))
+        
+        load_components(self)
 
     def get_user(self, userid=None, username=None):
         """Convenience function for user retrieval"""
