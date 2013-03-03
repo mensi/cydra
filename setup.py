@@ -46,7 +46,8 @@ setup(
         'Flask',
         'flask-csrf',
         'Werkzeug',
-        'pyyaml'
+        'pyyaml',
+        'passlib'
     ],
     extras_require={},
 
@@ -63,6 +64,7 @@ setup(
 
         [cydra.plugins]
         cydra.datasource.mongo = cydra.datasource.mongo
+        cydra.datasource.file = cydra.datasource.file
         cydra.repository.git = cydra.repository.git
         cydra.repository.hg = cydra.repository.hg
         cydra.repository.svn = cydra.repository.svn

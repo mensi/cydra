@@ -73,7 +73,7 @@ class ConfigurationFile(Component):
                     cfile.seek(0)
                     return load_yaml(cfile)
                 except:
-                    pass
+                    logger.exception("Undable to parse YAML")
         finally:
             cfile.close()
         
