@@ -47,7 +47,7 @@ def is_valid_project_name(name):
         return False
 
     # only allow alphanumeric names
-    if re.match('^[a-z][a-z0-9\-_]{0,31}$', name) is None:
+    if re.match('^[a-zA-Z][a-zA-Z0-9\-_]{0,31}$', name) is None:
         return False
     else:
         return True
