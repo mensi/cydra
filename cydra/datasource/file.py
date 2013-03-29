@@ -55,7 +55,7 @@ class FileDataSource(Component):
 
     def save_project(self, project):
         # Check name
-        if not is_valid_project_name(projectname):
+        if not is_valid_project_name(project.name):
             return None
         
         path = self._get_project_path(project.name)
@@ -111,6 +111,7 @@ class FileDataSource(Component):
                     if component not in look_in:
                         found = False
                         break
+                    look_in = look_in[component]
                 if found:
                     ret.append(project)
             else:
