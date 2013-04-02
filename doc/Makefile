@@ -12,7 +12,15 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
-.PHONY: help clean html dirhtml pickle json htmlhelp qthelp latex changes linkcheck doctest
+.PHONY: default apidoc help clean html dirhtml pickle json htmlhelp qthelp latex changes linkcheck doctest
+
+default: clean apidoc dirhtml
+
+apidoc:
+	if [ ! -d api ]; then mkdir api; fi
+	if [ ! -z `ls api` ]; then rm api/*; fi
+	sphinx-apidoc -o api/ ../
+	rm api/setup.rst api/modules.rst
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"

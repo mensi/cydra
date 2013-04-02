@@ -2,4 +2,5 @@
 *.pyc
 *.py~
 doc/_build
+doc/api/*
 dist

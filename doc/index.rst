@@ -15,6 +15,14 @@ Contents:
    installation
    config
 
+API Documentation
+=================
+
+.. toctree::
+   :maxdepth: 2
+
+   api/cydra
+
 Indices and tables
 ==================
 
