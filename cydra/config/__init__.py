@@ -64,12 +64,13 @@ class Configuration(Component):
 
     configuration_providers = ExtensionPoint(IConfigurationProvider, caching=False)
     config_discovery = False
-    loaded_providers = set()
+    loaded_providers = None
 
     def __init__(self):
         """Initialize Configuration"""
         self.cydra = self.compmgr
         self._data = {}
+        self.loaded_providers = set()
 
     def get(self, key, default=None):
         return self._data.get(key, default)
@@ -92,12 +93,13 @@ class Configuration(Component):
         if we are in config discovery mode and the component has not been
         specifically disabled."""
         enabled = self._data.setdefault('components', {}).get(component, None)
-        
-        logger.debug("is_component_enabled(%s) %r %r" % (component, self.config_discovery, enabled))
-        
+
         if self.config_discovery and enabled != False:
+            log.debug("Component %s enabled due to config_discovery mode", component)
             return True
-        
+
+        log.debug("Component %s enabled? %r", component, enabled)
+
         return bool(enabled)
 
     def load(self, config=None):
@@ -106,10 +108,10 @@ class Configuration(Component):
         If config is None, the default configuration will be loaded
         """
         self.config_discovery = True
-        
+
         if config is not None:
             self._load(config)
-        elif self._data == {} or self._data == {'components':{}}: #only load default config if config is empty
+        elif self._data == {} or self._data == {'components':{}}:  # only load default config if config is empty
             self._load(default_configuration)
 
         # if new configuration providers have been enabled, query them
@@ -117,7 +119,7 @@ class Configuration(Component):
             if provider not in self.loaded_providers:
                 self.loaded_providers.add(provider)
                 self.load(provider.get_config())
-        
+
         self.config_discovery = False
 
     def _load(self, config):
@@ -140,7 +142,7 @@ class Configuration(Component):
                     self._data[k] = v
 
         if plugin_paths_dirty :
-            load_components(self.cydra, self._data.get('plugin_paths', set())) # new plugin paths, load from those
+            load_components(self.cydra, self._data.get('plugin_paths', set()))  # new plugin paths, load from those
 
     def merge(self, dest, source):
         """Merges a subtree into a subtree of the config
