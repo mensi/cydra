@@ -46,13 +46,50 @@ class Interface(object):
     """Disable the cache for the active extensions"""
 
 class ExtensionPoint(object):
-    """Extension point for an interface"""
+    """Extension point for an interface
+    
+    You can use an extension point in a class definition::
+    
+        class Foo(Component):
+            bars = ExtensionPoint(IBar)
+            
+            def __init__(self):
+                print(list(self.bars))
+    
+    Or standalone::
+    
+        def foo():
+            c = Cydra()
+            bars = ExtensionPoint(IBar, component_manager=cydra)
+            print(list(bars))
+            
+    In both cases, the extension point has to be bound to a component manager
+    before usage. When used in a class definition, the class has to have a
+    compmgr attribute at runtime; children of Component that are loaded via
+    the component machinery will already satisfy this condition. Standalone
+    extension point instances have to be supplied with a component manager
+    explicitly.
+    
+    Iterating an extension point will yield the enabled components implementing
+    the given interface. Further behaviour depends on the interface itself. Usually
+    you will be able to call the interfaces functions. Depending on the attribute
+    proxy specified in the interface, function calls will be performed on all
+    components or in another way. See :class:`Interface`,
+    :class:`BroadcastAttributeProxy` and :class:`BroadcastAttributeProxy` for
+    further details"""
 
     _caching = True
+    """Is caching enabled for this ExtensionPoint?"""
+
     _cache = None
+    """The cache of components are relevant to this ExtensionPoint"""
+
+    _ep_cache = None
+    """The cache of ComponentManager to ExtensionPoint mapping"""
 
     def __init__(self, interface, name=None, component_manager=None, caching=True):
         self._interface = interface
+        self._ep_cache = {}
 
         if caching == False or interface._iface_disable_extension_cache == False:
             self._caching = False
@@ -63,7 +100,14 @@ class ExtensionPoint(object):
         self._name = name
         self._component_manager = component_manager
 
+        # hackedy hack docstring for sphinx
+        self.__doc__ = ':class:`cydra.component.ExtensionPoint` for :class:`%s`' % (
+            interface.__module__ + '.' + interface.__name__,)
+
     def _get_extensions(self):
+        if self._component_manager is None:
+            raise ValueError("Component manager not set")
+
         if self._cache is not None:
             return self._cache
 
@@ -92,10 +136,21 @@ class ExtensionPoint(object):
 
     # Descriptor protocol for property-like usage
     def __get__(self, obj, typ=None):
-        if self._component_manager is None:
-            self._component_manager = obj.compmgr
+        if obj is None:
+            return self
 
-        return self
+        if self._component_manager is not None:
+            logger.warn("__get__ on ExtensionPoint that has already been bound to a compmgr")
+
+        if obj.compmgr not in self._ep_cache:
+            self._ep_cache[obj.compmgr] = self.__class__(
+                self._interface,
+                name=self._name,
+                component_manager=obj.compmgr,
+                caching=self._caching
+            )
+
+        return self._ep_cache[obj.compmgr]
 
     # Iterator protocol for iteration over extensions
     def __iter__(self):
@@ -111,7 +166,7 @@ class ExtensionPoint(object):
 
         return self._interface._iface_attribute_proxy(self._interface, self._get_extensions(), name)
 
-    # Repr and stuff 
+    # Repr and stuff
     def __repr__(self):
         return '<ExtensionPoint for Interface %s>' % (self._name,)
 
@@ -313,9 +368,9 @@ class ComponentManager(object):
 
     def is_enabled(self, cls):
         """Return whether the given component class is enabled."""
-        #if cls not in self.enabled:
+        # if cls not in self.enabled:
         #    self.enabled[cls] = self.is_component_enabled(cls)
-        #return self.enabled[cls]
+        # return self.enabled[cls]
         return self.is_component_enabled(cls)
 
     def disable_component(self, component):
