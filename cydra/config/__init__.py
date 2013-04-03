@@ -95,7 +95,7 @@ class Configuration(Component):
         enabled = self._data.setdefault('components', {}).get(component, None)
 
         if self.config_discovery and enabled != False:
-            log.debug("Component %s enabled due to config_discovery mode", component)
+            logger.debug("Component %s enabled due to config_discovery mode", component)
             return True
 
         log.debug("Component %s enabled? %r", component, enabled)
