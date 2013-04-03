@@ -31,8 +31,8 @@ setup(name='CydraTrac',
       namespace_packages=['cydraplugins'],
       packages=['cydraplugins', 'cydraplugins.trac'],
       package_data={
-          #'': ['COPYING', 'README'],
+          # '': ['COPYING', 'README'],
           },
-      entry_points={'cydra.plugins': 'trac = cydraplugins.trac',
+      entry_points={'cydra.plugins': 'cydraplugins.trac = cydraplugins.trac',
                     'console_scripts': 'cydra-trachttpd = cydraplugins.trac:standalone_serve',
                     'trac.plugins': 'cydrapermissionpolicy = cydraplugins.trac.permission_policy'})
