@@ -98,7 +98,7 @@ class Configuration(Component):
             logger.debug("Component %s enabled due to config_discovery mode", component)
             return True
 
-        log.debug("Component %s enabled? %r", component, enabled)
+        logger.debug("Component %s enabled? %r", component, enabled)
 
         return bool(enabled)
 
