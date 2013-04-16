@@ -80,23 +80,45 @@ class TracEnvironments(Component):
             raise Exception("trac environments base path not configured")
 
     def get_env_path(self, project):
+        """Returns the path of the trac environment"""
         return os.path.join(self.component_config['base'], project.name)
 
     def get_default_options(self, project):
         """Get the default set of options Cydra enforces
         
         These options override everything"""
-        return [
+        # version-independent options
+        result = [
             ('project', 'name', project.name),
-            ('trac', 'database', 'sqlite:db/trac.db'), #TODO: implement the possibility to override this
-            ('trac', 'repository_sync_per_request', ''), # We use hooks, don't sync per request
-            ('trac', 'permission_policies', 'CydraPermissionPolicy'),
-            ('components', 'tracext.hg.*', 'enabled'),
-            ('components', 'tracext.git.*', 'enabled'),
+            ('header_logo', 'src', 'common/trac_banner.png'),  # Perhaps let user set a custom one
+            ('trac', 'database', 'sqlite:db/trac.db'),  # TODO: implement the possibility to override this
+            ('trac', 'repository_sync_per_request', ''),  # We use hooks, don't sync per request
+
+            # Use Cydra's permission policy
             ('components', 'cydraplugins.*', 'enabled'),
+            ('trac', 'permission_policies', 'CydraPermissionPolicy'),
+
+            # enable all repository types. This could be changed to selectively enable to
+            # ones used in the project, however this would also require resyncing the config
+            # when a repository of a new type is created
+            ('components', 'tracext.hg.*', 'enabled'),
+            # further repo types depend on trac's version
+
             ('git', 'cached_repository', 'true'),
-            ('header_logo', 'src', 'common/trac_banner.png'), # Perhaps let user set a custom one
         ]
+
+        tracversion = pkg_resources.parse_version(trac.__version__)
+
+        if tracversion <= pkg_resources.parse_version('0.12'):
+            result.append(('components', 'tracext.git.*', 'enabled'))
+
+        if tracversion >= pkg_resources.parse_version('1.0'):
+            # SVN became optional
+            result.append(('components', 'tracopt.versioncontrol.svn.*', 'enabled'))
+            # git was included in the main trac distribution
+            result.append(('components', 'tracopt.versioncontrol.git.*', 'enabled'))
+
+        return result
 
     def has_env(self, project):
         """Does the project contain a Trac environment"""
@@ -151,7 +173,8 @@ class TracEnvironments(Component):
 
     def sync_project(self, project):
         """For project.ISyncParticipant"""
-        self.sync(project)
+        if self.has_env(project):
+            self.sync(project)
 
     def sync(self, project):
         """Sync the trac environment with cydra
@@ -203,7 +226,7 @@ class TracEnvironments(Component):
             logger.debug('Looking at trac repo %s', repo.reponame)
 
             try:
-                baseparts = repo.get_base().split(':') # This is extremely naiive and possibly breaks some time
+                baseparts = repo.get_base().split(':')  # This is extremely naiive and possibly breaks some time
                 repotype, path = baseparts[0], baseparts[-1]
             except:
                 logger.error("Unable to parse: " + repo.get_base())
@@ -394,7 +417,7 @@ class TracEnvironments(Component):
             if repository.name not in repository.project.data.get('plugins', {}).get('trac', {}).get(repository.type, {}):
                 return ('Register in Trac', 'trac.register_repository', 'post')
             else:
-                pass # TODO: deregister
+                pass  # TODO: deregister
 
     def repository_change_commit(self, repository, revisions):
         self._changeset_event(repository, 'changeset_added', revisions)
@@ -503,9 +526,9 @@ def standalone_serve():
 
     app = TracWrapper()
 
-    #from werkzeugprofiler import ProfilerMiddleware
-    #app = ProfilerMiddleware(app, stream=open('profile_stats.txt', 'w'), accum_count=100, sort_by=('cumulative', 'calls'), restrictions=(.1,))
+    # from werkzeugprofiler import ProfilerMiddleware
+    # app = ProfilerMiddleware(app, stream=open('profile_stats.txt', 'w'), accum_count=100, sort_by=('cumulative', 'calls'), restrictions=(.1,))
 
     run_simple('0.0.0.0', port, app, use_reloader=True,
-            use_debugger=False, #use_evalex=True,
+            use_debugger=False,  # use_evalex=True,
             )
