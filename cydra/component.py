@@ -351,19 +351,21 @@ class ComponentManager(object):
         return the existing instance if the component has already been
         activated.
         """
-        logger.debug("Loading Component %s" % cls.__name__)
-        if not self.is_enabled(cls):
-            logger.debug("Component %s is not enabled" % cls.__name__)
-            return None
         component = self.components.get(cls)
-        if not component:
-            if cls not in ComponentMeta._components:
-                raise Exception('Component "%s" not registered' % cls.__name__)
-            try:
-                component = cls(self)
-            except TypeError, e:
-                raise Exception('Unable to instantiate component %r (%s)' %
-                                (cls, e))
+        if component is not None:
+            return component  # if there already is an instance, just return it
+
+        if not self.is_enabled(cls):
+            # logger.debug("Component %s is not enabled" % cls.__name__)
+            return None
+
+        if cls not in ComponentMeta._components:
+            raise Exception('Component "%s" not registered' % cls.__name__)
+        try:
+            component = cls(self)
+        except TypeError, e:
+            raise Exception('Unable to instantiate component %r (%s)' %
+                            (cls, e))
         return component
 
     def is_enabled(self, cls):

@@ -98,8 +98,6 @@ class Configuration(Component):
             logger.debug("Component %s enabled due to config_discovery mode", component)
             return True
 
-        logger.debug("Component %s enabled? %r", component, enabled)
-
         return bool(enabled)
 
     def load(self, config=None):
