@@ -182,4 +182,4 @@ def commit_hook():
     if not repository:
         sys.exit("Unknown repository")
 
-    repository.notify_post_commit(sys.argv[3])
+    repository.notify_post_commit([sys.argv[3]])
