@@ -87,10 +87,10 @@ class TracEnvironments(Component):
         """Get the default set of options Cydra enforces
         
         These options override everything"""
-        # version-independent options
+
+        # Version-independent options
         result = [
             ('project', 'name', project.name),
-            ('header_logo', 'src', 'common/trac_banner.png'),  # Perhaps let user set a custom one
             ('trac', 'database', 'sqlite:db/trac.db'),  # TODO: implement the possibility to override this
             ('trac', 'repository_sync_per_request', ''),  # We use hooks, don't sync per request
 
@@ -107,8 +107,13 @@ class TracEnvironments(Component):
             ('git', 'cached_repository', 'true'),
         ]
 
+        # Options if no config is inherited
+        if 'inherit_config' not in self.component_config:
+            result.append(('header_logo', 'src', 'common/trac_banner.png'))  # TODO: let the user choose a custom image
+
         tracversion = pkg_resources.parse_version(trac.__version__)
 
+        # Version-specific options
         if tracversion <= pkg_resources.parse_version('0.12'):
             result.append(('components', 'tracext.git.*', 'enabled'))
 
@@ -420,11 +425,11 @@ class TracEnvironments(Component):
                 pass  # TODO: deregister
 
     def repository_change_commit(self, repository, revisions):
-        self._changeset_event(repository, 'changeset_added', revisions)
+        self._changeset_event(repository, 'changeset_modified', revisions)
 
     # IRepositoryObserver
     def repository_post_commit(self, repository, revisions):
-        self._changeset_event(repository, 'changeset_modified', revisions)
+        self._changeset_event(repository, 'changeset_added', revisions)
 
     # IRepositoryObserver
     def pre_delete_repository(self, repository):
