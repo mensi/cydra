@@ -95,7 +95,7 @@ class ExtensionPoint(object):
             self._caching = False
 
         if name is None:
-            name = interface.__class__.__name__
+            name = interface.__name__
 
         self._name = name
         self._component_manager = component_manager
