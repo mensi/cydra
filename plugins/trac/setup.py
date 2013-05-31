@@ -19,10 +19,10 @@
 from setuptools import setup, find_packages
 
 setup(name='CydraTrac',
-      install_requires=['Cydra >=0.1', 'Trac'],
+      install_requires=['Cydra >=0.2', 'Trac'],
       description='Cydra plugin for trac integration',
       keywords='cydra trac',
-      version='0.1',
+      version='0.2',
       url='http://www.cydra.org',
       license='GPL',
       author='Manuel Stocker',
