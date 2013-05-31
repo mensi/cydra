@@ -24,35 +24,51 @@ from twisted.conch.ssh import keys
 from twisted.python import log
 
 import cydra
+import cydra.project
 from cydra.component import ExtensionPoint
 from cydra.permission import IUserTranslator, IUserAuthenticator
 from cydra.component import Component, implements
 from cydra.datasource import IPubkeyStore
 from cydra.web.frontend.hooks import IRepositoryViewerProvider, IProjectFeaturelistItemProvider
 
-from twistedgit import ssh
+from gitserverglue import ssh, http, find_git_viewer
 
 import logging
 logger = logging.getLogger(__name__)
 
-
-import logging
-logger = logging.getLogger(__name__)
-
-class TwistedGit(Component):
-    """Cydra component for integration between TwistedGit and Cydra"""
+class GitServerGlue(Component):
+    """Cydra component for integration between GitServerGlue and Cydra"""
 
     implements(IRepositoryViewerProvider)
+    implements(IProjectFeaturelistItemProvider)
 
     def __init__(self):
         pass
 
     def get_repository_viewers(self, repository):
         """Add clone URL to the viewers"""
-        if 'url_base' not in self.component_config:
-            logger.warning("url_base is not configured!")
+        res = []
+
+        if 'ssh_url_base' not in self.component_config:
+            logger.warning("ssh_url_base is not configured!")
         elif repository.type == 'git':
-            return ('Git over ssh', self.component_config['url_base'] + '/' + repository.project.name + '/' + repository.name + '.git')
+            res.append(('ssh://', self.component_config['ssh_url_base'] + '/git/' + repository.project.name + '/' + repository.name + '.git'))
+
+        if 'http_url_base' not in self.component_config:
+            logger.warning("http_url_base is not configured!")
+        elif repository.type == 'git':
+            res.append(('http://', self.component_config['http_url_base'] + '/' + repository.project.name + '/' + repository.name + '.git'))
+
+        return res
+
+    def get_project_featurelist_items(self, project):
+        if project.get_repository_type('git').get_repositories(project):
+            if 'http_url_base' not in self.component_config:
+                logger.warning("http_url_base is not configured!")
+                return ('Git HTTP', [])
+
+            return ('Git HTTP', [{'href': self.component_config['http_url_base'] + '/' + project.name,
+                                  'name': 'view'}])
 
 class CydraHelper(object):
 
@@ -62,23 +78,40 @@ class CydraHelper(object):
     git_binary = 'git'
     git_shell_binary = 'git-shell'
 
-    path_matcher = re.compile('^/git/(?P<project>[a-z][a-z0-9\-_]{0,31})/(?P<repository>[a-z][a-z0-9\-_]{0,31})\.git$')
-
     def __init__(self, cyd):
         self.compmgr = self.cydra = cyd
 
-    def can_read(self, username, virtual_path):
-        repo = self.get_repository(virtual_path)
-        user = self.compmgr.get_user(username=username)
+        repoconfig = cyd.config.get_component_config('cydra.repository.git.GitRepositories', {})
+        if 'base' not in repoconfig:
+            raise Exception("git base path not configured")
+        self.gitbase = repoconfig['base']
+
+        self.config = cyd.config.get_component_config('cydraplugins.gitserverglue.GitServerGlue', {})
+
+    def can_read(self, username, path_info):
+        project = path_info.get('cydra_project')
+        repo = path_info.get('cydra_repository')
+
+        if username is None:
+            user = self.compmgr.get_user(userid='*')
+        else:
+            user = self.compmgr.get_user(username=username)
+
+        if repo is None and project is not None:
+            return project.get_permission(user, '*', 'read')
 
         if repo is None or user is None:
             return False
 
         return repo.has_read_access(user)
 
-    def can_write(self, username, virtual_path):
-        repo = self.get_repository(virtual_path)
-        user = self.compmgr.get_user(username=username)
+    def can_write(self, username, path_info):
+        repo = path_info.get('cydra_repository')
+
+        if username is None:
+            user = self.compmgr.get_user(userid='*')
+        else:
+            user = self.compmgr.get_user(username=username)
 
         if repo is None or user is None:
             return False
@@ -99,26 +132,55 @@ class CydraHelper(object):
 
         return self.pubkey_store.user_has_pubkey(user, keyblob)
 
-    def translate_path(self, virtual_path):
-        repo = self.get_repository(virtual_path)
-        if repo is not None:
-            return repo.path
+    def path_lookup(self, url, protocol_hint=None):
+        res = {
+            'repository_base_fs_path': None,
+            'repository_base_url_path': None,
+            'repository_fs_path': None
+        }
 
-    def get_repository(self, path):
-        m = self.path_matcher.match(path)
-        if not m:
-            return None
+        pathparts = url.lstrip('/').split('/')
+        project = None
+        reponame = None
 
-        project = m.group('project')
-        repository = m.group('repository')
+        if protocol_hint == 'ssh':
+            # /git/project/reponame.git
+            if (len(pathparts) < 2 or pathparts[0] != 'git' or
+                 not cydra.project.is_valid_project_name(pathparts[1])):
+                return
+            res['cydra_project'] = project = self.cydra.get_project(pathparts[1])
+            res['repository_base_url_path'] = '/git/' + project.name + '/'
+            reponame = pathparts[2] if len(pathparts) >= 3 else None
 
-        project = self.cydra.get_project(project)
+        else:
+            # /project/reponame.git
+            if len(pathparts) < 1 or not cydra.project.is_valid_project_name(pathparts[0]):
+                return
+            res['cydra_project'] = project = self.cydra.get_project(pathparts[0])
+            res['repository_base_url_path'] = '/' + project.name + '/'
+            reponame = pathparts[1] if len(pathparts) >= 2 else None
+
         if project is None:
-            return None
+            return
 
-        # Repository discovery
-        repository = project.get_repository('git', repository)
-        return repository
+        res['repository_base_fs_path'] = os.path.join(self.gitbase, project.name) + '/'
+
+        if reponame is not None and reponame != '':
+            if reponame.endswith('.git'):
+                reponame = reponame[:-4]
+            res['cydra_repository'] = repo = project.get_repository('git', reponame)
+            if repo is None:
+                return res
+
+            res['repository_fs_path'] = repo.path
+            res['repository_clone_urls'] = {}
+            if 'http_url_base' in self.config:
+                res['repository_clone_urls']['http'] = self.config['http_url_base'] + '/' + project.name + '/' + repo.name + '.git'
+
+            if 'http_url_base' in self.config:
+                res['repository_clone_urls']['ssh'] = self.config['ssh_url_base'] + '/git/' + project.name + '/' + repo.name + '.git'
+
+        return res
 
 def run_server():
     import logging
@@ -132,6 +194,8 @@ def run_server():
     parser.add_option('-l', '--logfile', action='store', dest='logfile', default=None)
     parser.add_option('-u', '--user', action='store', dest='user', default=None)
     parser.add_option('-g', '--group', action='store', dest='group', default=None)
+    parser.add_option('-s', '--sshport', action='store', type='int', dest='sshport', default=2222)
+    parser.add_option('-w', '--httpport', action='store', type='int', dest='httpport', default=8080)
     (options, args) = parser.parse_args()
 
     # configure logging
@@ -155,13 +219,9 @@ def run_server():
     observer = log.PythonLoggingObserver()
     observer.start()
 
-    port = 2222
-    if len(args) > 0:
-        port = int(args[0])
-
     cyd = cydra.Cydra()
     helper = CydraHelper(cyd)
-    config = cyd.config.get_component_config('cydraplugins.twistedgit.TwistedGit', {})
+    config = cyd.config.get_component_config('cydraplugins.gitserverglue.GitServerGlue', {})
 
     keyfilename = config.get('server_key')
     if keyfilename is None:
@@ -178,6 +238,12 @@ def run_server():
         private_keys={'ssh-rsa': keys.Key.fromFile(keyfilename + '.key')},
         authnz=helper,
         git_configuration=helper
+    )
+
+    http_factory = http.create_factory(
+        authnz=helper,
+        git_configuration=helper,
+        git_viewer=find_git_viewer()
     )
 
     # daemonize if requested
@@ -226,5 +292,6 @@ def run_server():
         logger.debug("Dumping Stack: \n" + ''.join(traceback.format_stack(frame)))
     signal.signal(signal.SIGUSR1, dump_stack)
 
-    reactor.listenTCP(port, ssh_factory())
+    reactor.listenTCP(options.sshport, ssh_factory)
+    reactor.listenTCP(options.httpport, http_factory)
     reactor.run()

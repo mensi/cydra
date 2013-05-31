@@ -18,20 +18,20 @@
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 from setuptools import setup, find_packages
 
-setup(name='CydraTwistedGit',
-      install_requires=['Cydra >=0.1', 'TwistedGit'],
+setup(name='CydraGitServerGlue',
+      install_requires=['Cydra >=0.1', 'GitServerGlue>=0.3'],
       description='Cydra plugin for ssh-based repository serving',
       keywords='cydra ssh',
-      version='0.1',
+      version='0.3',
       url='http://www.cydra.org',
       license='GPL',
       author='Manuel Stocker',
       author_email='mensi@vis.ethz.ch',
-      long_description="""Integrates TwistedGit with Cydra""",
+      long_description="""Integrates GitServerGlue with Cydra""",
       namespace_packages=['cydraplugins'],
-      packages=['cydraplugins', 'cydraplugins.twistedgit'],
+      packages=['cydraplugins', 'cydraplugins.gitserverglue'],
       package_data={
-          #'': ['COPYING', 'README'],
+          # '': ['COPYING', 'README'],
           },
-      entry_points={'cydra.plugins': 'twistedgit = cydraplugins.twistedgit',
-                    'console_scripts': ['cydra-twistedgit = cydraplugins.twistedgit:run_server']})
+      entry_points={'cydra.plugins': 'cydraplugins.gitserverglue = cydraplugins.gitserverglue',
+                    'console_scripts': ['cydra-gitserverglue = cydraplugins.gitserverglue:run_server']})
