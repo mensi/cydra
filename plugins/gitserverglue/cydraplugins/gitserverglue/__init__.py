@@ -177,7 +177,7 @@ class CydraHelper(object):
             if 'http_url_base' in self.config:
                 res['repository_clone_urls']['http'] = self.config['http_url_base'] + '/' + project.name + '/' + repo.name + '.git'
 
-            if 'http_url_base' in self.config:
+            if 'ssh_url_base' in self.config:
                 res['repository_clone_urls']['ssh'] = self.config['ssh_url_base'] + '/git/' + project.name + '/' + repo.name + '.git'
 
         return res
