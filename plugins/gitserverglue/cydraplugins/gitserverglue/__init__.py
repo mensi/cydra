@@ -153,11 +153,17 @@ class CydraHelper(object):
             reponame = pathparts[2] if len(pathparts) >= 3 else None
 
         else:
-            # /project/reponame.git
-            if len(pathparts) < 1 or not cydra.project.is_valid_project_name(pathparts[0]):
+            # /project/reponame.git resp. /some/prefix/project/reponame.git
+            # if gitserverglue is behind a reverse proxy
+            prefixparts = []
+            if 'http_url_prefix' in self.config:
+                prefixparts = self.config['http_url_prefix'].lstrip('/').split('/')
+
+            if len(pathparts) - len(prefixparts) < 1 or not cydra.project.is_valid_project_name(pathparts[len(prefixparts)]):
                 return
-            res['cydra_project'] = project = self.cydra.get_project(pathparts[0])
-            res['repository_base_url_path'] = '/' + project.name + '/'
+            res['cydra_project'] = project = self.cydra.get_project(pathparts[len(prefixparts)])
+            res['repository_base_url_path'] = '/' + '/'.join(prefixparts + [project.name]) + '/'
+
             reponame = pathparts[1] if len(pathparts) >= 2 else None
 
         if project is None:
