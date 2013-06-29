@@ -164,7 +164,7 @@ class CydraHelper(object):
             res['cydra_project'] = project = self.cydra.get_project(pathparts[len(prefixparts)])
             res['repository_base_url_path'] = '/' + '/'.join(prefixparts + [project.name]) + '/'
 
-            reponame = pathparts[1] if len(pathparts) >= 2 else None
+            reponame = pathparts[len(prefixparts) + 1] if len(pathparts) >= len(prefixparts) + 2 else None
 
         if project is None:
             return
