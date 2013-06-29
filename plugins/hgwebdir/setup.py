@@ -33,5 +33,5 @@ setup(name='CydraHgWebdir',
       package_data={
           #'': ['COPYING', 'README'],
           },
-      entry_points={'cydra.plugins': 'hgwebdir = cydraplugins.hgwebdir',
+      entry_points={'cydra.plugins': 'cydraplugins.hgwebdir = cydraplugins.hgwebdir',
                     'console_scripts': 'cydra-hgwebdird = cydraplugins.hgwebdir:standalone_serve'})
