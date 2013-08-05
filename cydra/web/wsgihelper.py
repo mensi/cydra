@@ -161,7 +161,8 @@ class HTTPBasicAuthenticator(object):
             logger.debug("Got REMOTE_USER=%s", userid)
 
             if userid in self.cache:
-                return self.cache.get(userid)
+                user = self.cache.get(userid)
+                environ['cydra_user'] = user
             else:
                 user = self.translator.username_to_user(userid)
 
@@ -171,8 +172,9 @@ class HTTPBasicAuthenticator(object):
 
                 if not user.is_guest:
                     self.cache.set(userid, user)
+                    environ['cydra_user'] = user
 
-                return user
+            return user
 
 class WSGIAuthnzHelper(object):
 
