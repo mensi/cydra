@@ -40,6 +40,23 @@ _ldap_escape_pat = re.compile('|'.join(re.escape(k) for k in LDAP_ESCAPES.keys()
 def ldap_escape(s):
     return _ldap_escape_pat.sub(lambda x: LDAP_ESCAPES[x.group()], s)
 
+def force_unicode(txt):
+    try:
+        return unicode(txt)
+    except UnicodeDecodeError:
+        pass
+    
+    orig = txt
+    if type(txt) != str:
+        txt = str(txt)
+        
+    for args in [('utf-8',), ('latin1',), ('ascii', 'replace')]:
+        try:
+            return txt.decode(*args)
+        except UnicodeDecodeError:
+            pass
+    raise ValueError("Unable to force %s object %r to unicode" % (type(orig).__name__, orig))
+
 class LdapLookup(object):
 
     connection = None
@@ -159,7 +176,7 @@ class ADUsers(Component):
         return User(self.compmgr, 
                 userobj['userPrincipalName'][0], 
                 username=userobj['sAMAccountName'][0], 
-                full_name=userobj['displayName'][0], groups=groups)
+                full_name=force_unicode(userobj['displayName'][0]), groups=groups)
 
     def groupid_to_group(self, groupid):
         group = self._ldap_to_group(self.ldap.get_group(groupid))
