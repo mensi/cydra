@@ -18,6 +18,7 @@
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 import os.path
 import pkg_resources
+import shutil
 
 import logging
 logger = logging.getLogger(__name__)
@@ -28,8 +29,8 @@ from cydra.web import IBlueprintProvider
 from cydra.web.frontend.hooks import IRepositoryActionProvider, IProjectActionProvider, IProjectFeaturelistItemProvider
 from cydra.component import Component, implements
 from cydra.cli import ICliProjectCommandProvider
-from cydra.repository import IRepositoryObserver
-from cydra.project import ISyncParticipant as IProjectSyncParticipant
+from cydra.repository.interfaces import IRepositoryObserver
+from cydra.project import ISyncParticipant as IProjectSyncParticipant, IProjectObserver
 
 from trac.core import Component as TracComponent, implements as trac_implements
 from trac.env import Environment
@@ -175,6 +176,24 @@ class TracEnvironments(Component):
             logger.exception("Caught exception while creating Trac environment in " + self.get_env_path(project))
 
         return False
+
+    def delete(self, project, archiver=None):
+        if not self.has_env(project):
+            return
+
+        if not archiver:
+            archiver = project.get_archiver('trac')
+
+        envpath = self.get_env_path(project)
+        tmppath = os.path.join(os.path.dirname(envpath), uuid.uuid1().hex)
+        os.rename(envpath, tmppath)  # POSIX guarantees this to be atomic.
+
+        with archiver:
+            archiver.add_path(tmppath, 'trac')
+
+        logger.info("Deleted trac installation for project %s: %s", project.name, tmppath)
+
+        shutil.rmtree(tmppath)
 
     def sync_project(self, project):
         """For project.ISyncParticipant"""
@@ -432,7 +451,10 @@ class TracEnvironments(Component):
         self._changeset_event(repository, 'changeset_added', revisions)
 
     # IRepositoryObserver
-    def pre_delete_repository(self, repository):
+    def pre_delete_repository(self, repository, project_deletion=False):
+        if project_deletion:
+            return  # Ignore, trac is going to be deleted as well anyways
+
         tracrepo = repository.project.data.get('plugins', {}).get('trac', {}).get(repository.type, {}).get(repository.name)
         if tracrepo and self.has_env(repository.project):
             # remove it
@@ -444,6 +466,10 @@ class TracEnvironments(Component):
             del repository.project.data['plugins']['trac'][repository.type][repository.name]
             if not repository.project.data['plugins']['trac'][repository.type]:
                 del repository.project.data['plugins']['trac'][repository.type]
+
+    # IProjectObserver
+    def pre_delete_project(self, project, archiver):
+        self.delete(project, archiver)
 
     def _changeset_event(self, repository, event, revisions):
         project = repository.project

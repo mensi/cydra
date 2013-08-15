@@ -23,7 +23,7 @@ import ConfigParser
 
 import cydra
 from cydra.component import Component, implements, ExtensionPoint
-from cydra.repository import IRepository, RepositoryParameter, Repository
+from cydra.repository import RepositoryProviderComponent, RepositoryParameter, Repository
 from cydra.error import CydraError, InsufficientConfiguration, UnknownRepository
 from cydra.permission import IPermissionProvider
 
@@ -46,9 +46,7 @@ def is_valid_repository_name(name):
     else:
         return True
 
-class HgRepositories(Component):
-
-    implements(IRepository)
+class HgRepositories(RepositoryProviderComponent):
 
     repository_type = 'hg'
     repository_type_title = 'Mercurial'
@@ -101,7 +99,7 @@ class HgRepositories(Component):
 
         repository = HgRepository(self.compmgr, self._base, project, repository_name)
         repository.set_params(**params)
-        repository.sync() # synchronize repository
+        repository.sync()  # synchronize repository
         return repository
 
     def get_params(self):

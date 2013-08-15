@@ -22,7 +22,7 @@ import re
 
 import cydra
 from cydra.component import Component, implements, ExtensionPoint
-from cydra.repository import IRepository, Repository
+from cydra.repository import RepositoryProviderComponent, Repository
 from cydra.error import CydraError, InsufficientConfiguration, UnknownRepository
 from cydra.permission import IPermissionProvider
 from cydra.web.frontend.hooks import IRepositoryViewerProvider, IProjectFeaturelistItemProvider
@@ -57,9 +57,7 @@ class SVNExternalViewer(Component):
             return (self.title, [{'href': self.component_config['url_base'] + '/' + project.name,
                                   'name': 'view'}])
 
-class SVNRepositories(Component):
-
-    implements(IRepository)
+class SVNRepositories(RepositoryProviderComponent):
 
     repository_type = 'svn'
     repository_type_title = 'SVN'

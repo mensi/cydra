@@ -65,6 +65,11 @@ class IDataSource(Interface):
         :param owner: User object of the owner of this project"""
         pass
 
+    def delete_project(self, project):
+        """Delete project
+        
+        :param project: A Project instance"""
+
     def list_projects(self):
         """List all projects"""
         pass

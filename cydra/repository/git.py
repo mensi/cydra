@@ -22,8 +22,8 @@ import subprocess
 import re
 
 import cydra
-from cydra.component import Component, implements, ExtensionPoint
-from cydra.repository import IRepository, Repository, RepositoryParameter
+from cydra.component import implements, ExtensionPoint
+from cydra.repository import RepositoryProviderComponent, Repository, RepositoryParameter
 from cydra.error import CydraError, InsufficientConfiguration, UnknownRepository
 from cydra.permission import IPermissionProvider
 
@@ -38,14 +38,12 @@ param_description = RepositoryParameter(
         name='Description',
         description='Description of the repository')
 
-class GitRepositories(Component):
+class GitRepositories(RepositoryProviderComponent):
     """Component for git based repositories
     
     Configuration:
     - base: Path to the directory where repositories are stored
     - gitcommand: Path to git command. Defaults to git"""
-
-    implements(IRepository)
 
     repository_type = 'git'
     repository_type_title = 'Git'
@@ -111,7 +109,7 @@ class GitRepositories(Component):
 
         repository = GitRepository(self.compmgr, self._base, project, repository_name)
         repository.set_params(**params)
-        repository.sync() # synchronize repository
+        repository.sync()  # synchronize repository
         return repository
 
     def get_params(self):

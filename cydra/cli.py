@@ -58,6 +58,10 @@ class ProjectCmds(object):
         else:
             print getattr(self, args[0]).__doc__
 
+    def delete(self, args):
+        """Deletes a project"""
+        self.project.delete()
+
     def listrepos(self, args):
         """List all repositories in project"""
         repos = []

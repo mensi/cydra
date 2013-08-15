@@ -19,11 +19,13 @@
 
 import sys
 
-from pymongo import Connection, ASCENDING, binary
+from pymongo.mongo_client import MongoClient
+from pymongo import ASCENDING
+from bson import binary
 
+from cydra.error import InsufficientConfiguration
 from cydra.component import Component, implements
 from cydra.datasource import IDataSource, IPubkeyStore
-
 from cydra.project import is_valid_project_name, Project
 
 class MongoDataSource(Component):
@@ -44,7 +46,11 @@ class MongoDataSource(Component):
         if 'database' not in config:
             raise Exception('Database not configured')
 
-        self.connection = Connection(config['host'])
+        connection_args = {'host': config['host']}
+        if 'port' in config:
+            connection_args['port'] = int(config['port'])
+
+        self.connection = MongoClient(**connection_args)
         self.database = self.connection[config['database']]
 
         if 'user' in config and 'password' in config:
@@ -89,7 +95,7 @@ class MongoDataSource(Component):
                 ret.add(MongoDataSource._process_dict_keys(val, f))
 
         else:
-            raise Exception("The universe exploded")
+            raise Exception("Unhandled type found in dict")
 
         return ret
 
@@ -121,6 +127,12 @@ class MongoDataSource(Component):
         if self.get_project(projectname) is None:
             self.database.projects.insert({'name': projectname, 'owner': owner.userid})
             return self.get_project(projectname)
+
+    def delete_project(self, project):
+        if "_id" not in project.data:
+            return
+
+        self.database.projects.remove(project.data["_id"])
 
     def list_projects(self):
         ret = []

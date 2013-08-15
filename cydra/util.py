@@ -31,11 +31,16 @@ class NoopArchiver(object):
     def add_path(self, source, filename=None):
         pass
 
+    def dump_as_file(self, data, filename):
+        pass
+
 class TarArchiver(object):
     """Context Manager for archiving files"""
 
     path = None
     archive_file = None
+    tar = None
+    entries = 0
 
     def __init__(self, archive_file):
         self.archive_file = archive_file
@@ -44,7 +49,9 @@ class TarArchiver(object):
             raise ValueError("File already exists!")
 
     def __enter__(self):
-        self.tar = tarfile.open(self.archive_file, 'w')
+        if self.entries == 0:
+            self.tar = tarfile.open(self.archive_file, 'w')
+        self.entries += 1
 
     def add_path(self, source, filename=None):
         """Adds a file or directory to the archive"""
@@ -52,8 +59,23 @@ class TarArchiver(object):
             os.path.join(prefix, os.path.basename(source.rstrip('/')))
         self.tar.add(source, filename)
 
+    def dump_as_file(self, data, filename):
+        import yaml
+        from tempfile import mkdtemp
+
+        tempdir = mkdtemp()
+        tmpfile = os.path.join(tempdir, os.path.basename(filename))
+        with open(tmpfile, "w") as f:
+            yaml.safe_dump(data, f)
+
+        self.add_path(tmpfile, filename)
+        os.remove(tmpfile)
+        os.rmdir(tempdir)
+
     def __exit__(self, type, value, traceback):
-        self.tar.close()
+        self.entries -= 1
+        if self.entries == 0:
+            self.tar.close()
 
 
 def get_collator(callable):

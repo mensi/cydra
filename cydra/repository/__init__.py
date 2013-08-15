@@ -1,69 +1,30 @@
 # -*- coding: utf-8 -*-
+#
+# Copyright 2013 Manuel Stocker <mensi@mensi.ch>
+#
+# This file is part of Cydra.
+#
+# Cydra is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Cydra is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Cydra.  If not, see http://www.gnu.org/licenses
+
 import os, os.path, shutil
 import uuid
-from cydra.component import Interface, ExtensionPoint, BroadcastAttributeProxy
+from cydra.component import Component, ExtensionPoint, implements
+from cydra.repository.interfaces import ISyncParticipant, IRepositoryObserver, IRepositoryProvider
+from cydra.project.interfaces import IProjectObserver
 
 import logging
 logger = logging.getLogger(__name__)
-
-class IRepository(Interface):
-
-    _iface_attribute_proxy = BroadcastAttributeProxy()
-
-    repository_type = ''
-    repository_type_title = ''
-
-    def get_repositories(self, project):
-        """Get a list of repository objects for this project"""
-        pass
-
-    def get_repository(self, project, repository_name):
-        """Get a repository object"""
-        pass
-
-    def can_create(self, project, user=None):
-        """Can the given user create repositories"""
-        pass
-
-    def create_repository(self, project, repository_name):
-        """Create repository"""
-        pass
-
-    def get_params(self):
-        """Return the list of parameters for this repository type
-        
-        :return: list of RepositoryParameter instances  
-        """
-        pass
-
-class ISyncParticipant(Interface):
-    """Interface for components wishing to perform actions upon synchronisation"""
-
-    _iface_attribute_proxy = BroadcastAttributeProxy()
-
-    def sync_repository(self, repository):
-        """Synchronise repository"""
-        pass
-
-class IRepositoryObserver(Interface):
-    """Events on repository modifications"""
-
-    _iface_attribute_proxy = BroadcastAttributeProxy()
-
-    def repository_post_commit(self, repository, revisions):
-        """One or more commits have occured
-        
-        :param repository: The repository object
-        :param revisions: A list of revision strings"""
-        pass
-
-    def pre_delete_repository(self, repository):
-        """Gets called before a repository is deleted"""
-        pass
-
-    def post_delete_repository(self, repository):
-        """Gets called after a repository has been deleted"""
-        pass
 
 class RepositoryParameter(object):
     def __init__(self, keyword, name, optional=True, description=""):
@@ -74,6 +35,19 @@ class RepositoryParameter(object):
 
     def validate(self, value):
         return True
+
+class RepositoryProviderComponent(Component):
+    """Base class for components providing repositories"""
+
+    implements(IProjectObserver)
+    implements(IRepositoryProvider)
+
+    abstract = True
+
+    def pre_delete_project(self, project, archiver=None):
+        """Handle project delete by deleting all repositories"""
+        for repo in self.get_repositories(project):
+            repo.delete(archiver, project_deletion=True)
 
 class Repository(object):
     """Repository base"""
@@ -103,15 +77,15 @@ class Repository(object):
 
         self.sync_participants.sync_repository(self)
 
-    def delete(self, archiver=None):
+    def delete(self, archiver=None, project_deletion=False):
         """Delete the repository"""
         if not archiver:
             archiver = self.project.get_archiver('repository_' + self.type + '_' + self.name)
 
-        self.repository_observers.pre_delete_repository(self)
+        self.repository_observers.pre_delete_repository(self, project_deletion=project_deletion)
 
         tmppath = os.path.join(os.path.dirname(self.path), uuid.uuid1().hex)
-        os.rename(self.path, tmppath) # POSIX guarantees this to be atomic.
+        os.rename(self.path, tmppath)  # POSIX guarantees this to be atomic.
 
         with archiver:
             archiver.add_path(tmppath, os.path.join('repository', self.type, os.path.basename(self.path.rstrip('/'))))
