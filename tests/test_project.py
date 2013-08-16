@@ -16,7 +16,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
-import unittest
 import os.path
 from cydra.test.fixtures import *
 from cydra.test import getConfiguredTestCase
