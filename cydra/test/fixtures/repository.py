@@ -16,9 +16,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
-from __future__ import absolute_import
-
-from .common import FixtureWithTempPath, chain_fixtures
+from cydra.test.fixtures.common import FixtureWithTempPath, chain_fixtures
 
 class GitRepositories(FixtureWithTempPath):
     """Configure Cydra for local git repositories"""

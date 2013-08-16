@@ -16,11 +16,10 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
-from __future__ import absolute_import
 import unittest
 import os.path
-from .fixtures import *
-from . import getConfiguredTestCase
+from cydra.test.fixtures import *
+from cydra.test import getConfiguredTestCase
 
 def parameterized(name, fixture):
     class TestProjectOps(getConfiguredTestCase(fixture)):

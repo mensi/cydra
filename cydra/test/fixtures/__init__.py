@@ -16,10 +16,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
-from __future__ import absolute_import
-
-from .datasource import *
-from .repository import *
+from cydra.test.fixtures.datasource import *
+from cydra.test.fixtures.repository import *
 
 FullWithFileDS = AllRepositories(FileDatasource())
 FullWithMongoDS = AllRepositories(MongoDatasource())

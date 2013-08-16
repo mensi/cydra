@@ -16,12 +16,10 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
-from __future__ import absolute_import
-
 import socket
 
-from .common import FixtureWithTempPath
-from .. import procutils
+from cydra.test.fixtures.common import FixtureWithTempPath
+from cydra.test.procutils import MonitoredDaemon
 
 class FileDatasource(FixtureWithTempPath):
     """Configure Cydra with the file datasource"""
@@ -53,7 +51,7 @@ class MongoDatasource(FixtureWithTempPath):
         if port is None:
             raise Exception("Unable to find a port for mongoDB")
 
-        self.mongo = procutils.MonitoredDaemon([
+        self.mongo = MonitoredDaemon([
                 'mongod', '--dbpath', self.path, '--port', str(port),
                 # Options for fast startup:
                 '--nojournal', '--nohttpinterface', '--noprealloc', '--smallfiles'
