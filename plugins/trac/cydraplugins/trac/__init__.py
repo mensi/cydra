@@ -19,6 +19,7 @@
 import os.path
 import pkg_resources
 import shutil
+import uuid
 
 import logging
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ from cydra.web.frontend.hooks import IRepositoryActionProvider, IProjectActionPr
 from cydra.component import Component, implements
 from cydra.cli import ICliProjectCommandProvider
 from cydra.repository.interfaces import IRepositoryObserver
-from cydra.project import ISyncParticipant as IProjectSyncParticipant, IProjectObserver
+from cydra.project.interfaces import ISyncParticipant as IProjectSyncParticipant, IProjectObserver
 
 from trac.core import Component as TracComponent, implements as trac_implements
 from trac.env import Environment
@@ -62,6 +63,7 @@ class TracEnvironments(Component):
     implements(IRepositoryActionProvider)
     implements(IProjectFeaturelistItemProvider)
     implements(IProjectSyncParticipant)
+    implements(IProjectObserver)
 
     # this map might look silly right now, but it is not guaranteed that cydra and trac name
     # repository types the same

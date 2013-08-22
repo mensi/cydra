@@ -43,6 +43,15 @@ def parameterized(name, fixture):
             self.assertTrue(tracenvs.create(project), "Unable to create trac env")
             self.assertTrue(tracenvs.has_env(project), "has_env should return true after env creation")
 
+        def test_autodelete_on_project_deletion(self):
+            tracenvs = TracEnvironments(self.cydra)
+            guestuser = self.cydra.get_user(userid='*')
+            project = self.cydra.datasource.create_project('tractest', guestuser)
+            self.assertTrue(tracenvs.create(project), "Unable to create trac env")
+
+            project.delete()
+            self.assertFalse(tracenvs.has_env(project), "environment not properly removed on project deletion")
+
     TestTrac.__name__ = name
     return TestTrac
 
