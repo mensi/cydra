@@ -52,6 +52,33 @@ def parameterized(name, fixture):
             project.delete()
             self.assertFalse(tracenvs.has_env(project), "environment not properly removed on project deletion")
 
+        def test_repository_registration(self):
+            tracenvs = TracEnvironments(self.cydra)
+            guestuser = self.cydra.get_user(userid='*')
+            project = self.cydra.datasource.create_project('tractest', guestuser)
+            self.assertTrue(tracenvs.create(project), "Unable to create trac env")
+
+            gitrepo = project.get_repository_type('git').create_repository(project, "gitrepo")
+            self.assertTrue(gitrepo, "Unable to create git repository")
+
+            hgrepo = project.get_repository_type('hg').create_repository(project, "hgrepo")
+            self.assertTrue(hgrepo, "Unable to create hg repository")
+
+            self.assertTrue(tracenvs.register_repository(gitrepo), "Unable to register git repository")
+            self.assertTrue(tracenvs.register_repository(hgrepo), "Unable to register hg repository")
+            self.assertFalse(tracenvs.register_repository(gitrepo), "Duplicate registration for git repository possible")
+            self.assertFalse(tracenvs.register_repository(hgrepo), "Duplicate registration for hg repository possible")
+
+            self.assertTrue(tracenvs.is_repository_registered(gitrepo), "Is registered did not return true for gitrepo")
+            self.assertTrue(tracenvs.is_repository_registered(hgrepo), "Is registered did not return true for hgrepo")
+
+            gitrepo.delete()
+            self.assertFalse(tracenvs.is_repository_registered(gitrepo), "Git repo still registered after repository deletion")
+            self.assertTrue(tracenvs.is_repository_registered(hgrepo), "Is registered did not return true for hgrepo")
+
+            project.delete()
+            self.assertFalse(tracenvs.is_repository_registered(hgrepo), "Hg repo still registered after project deletion")
+
     TestTrac.__name__ = name
     return TestTrac
 
