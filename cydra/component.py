@@ -336,6 +336,7 @@ class ComponentManager(object):
 
     def __init__(self):
         """Initialize the component manager."""
+        self.failed_components = {}
         self.components = {}
         self.enabled = {}
         if isinstance(self, Component):

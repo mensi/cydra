@@ -16,30 +16,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
-import sys
 import types
 from pprint import pprint
-from itertools import chain
-import cydra
-from cydra.component import Interface, ExtensionPoint, BroadcastAttributeProxy
 
-class ICliProjectCommandProvider(Interface):
+from cydra.component import ExtensionPoint
+from cydra.cli.common import Command, ICliProjectCommandProvider
 
-    _iface_attribute_proxy = BroadcastAttributeProxy()
+class ProjectCommand(Command):
+    def __init__(self, cydra_instance):
+        super(ProjectCommand, self).__init__(cydra_instance)
 
-    def get_cli_project_commands(self):
-        """Provide further commands for the CLI
-        
-        :returns: A list of ('command', function) tuples"""
-        pass
-
-class ProjectCmds(object):
-
-    def __init__(self, compmgr, project):
-        self.compmgr = compmgr
-        self.project = project
-
-        further_commands = ExtensionPoint(ICliProjectCommandProvider, component_manager=compmgr).get_cli_project_commands()
+        further_commands = ExtensionPoint(ICliProjectCommandProvider, component_manager=self.cydra).get_cli_project_commands()
         commands = []
         for x in further_commands:
             if x is None:
@@ -52,11 +39,17 @@ class ProjectCmds(object):
             func.__name__ = cmd[0]
             setattr(self, cmd[0], types.MethodType(func, self, self.__class__))
 
-    def help(self, args):
-        if len(args) != 1 or not hasattr(self, args[0]):
-            print "Unknown command. Available commands: " + ', '.join([x for x in chain(self.__class__.__dict__, self.__dict__) if callable(getattr(self, x)) and x[0] != '_'])
-        else:
-            print getattr(self, args[0]).__doc__
+    def __call__(self, args):
+        if len(args) < 2:
+            print("Syntax: project <projectname> <command>")
+            return self.help(args[1:])
+
+        self.project = self.cydra.get_project(args[0])
+        if self.project is None:
+            print("Unknown Project: " + args[0])
+            return
+
+        super(ProjectCommand, self).__call__(args[1:])
 
     def delete(self, args):
         """Deletes a project"""
@@ -142,7 +135,7 @@ class ProjectCmds(object):
             print "Unknown value: " + value
             return
 
-        user = self.compmgr.get_user(userid=args[0])
+        user = self.cydra.get_user(userid=args[0])
 
         if self.project.set_permission(user, args[1], args[2], value):
             print "Done"
@@ -167,7 +160,7 @@ class ProjectCmds(object):
             print "Unknown value: " + value
             return
 
-        group = self.compmgr.get_group(groupid=args[0])
+        group = self.cydra.get_group(groupid=args[0])
 
         if self.project.set_group_permission(group, args[1], args[2], value):
             print "Done"
@@ -178,7 +171,7 @@ class ProjectCmds(object):
         """Set owner of project
         
         Syntax: setowner <username>"""
-        user = self.compmgr.get_user(username=args[0])
+        user = self.cydra.get_user(username=args[0])
 
         assert(user)
         self.project.data['owner'] = user.userid
@@ -199,63 +192,3 @@ class ProjectCmds(object):
     def dump(self, args):
         """Dump project data"""
         pprint(self.project.data)
-
-def cmd_project(args):
-    if len(args) < 2:
-        print "Syntax: project <projectname> <command>"
-    else:
-        cyd = cydra.Cydra()
-        project = cyd.get_project(args[0])
-
-        if project is None:
-            print "Unknown Project"
-        else:
-            cmds = ProjectCmds(cyd, project)
-
-            if not hasattr(cmds, args[1]):
-                cmds.help([])
-            else:
-                getattr(cmds, args[1])(args[2:])
-
-def sync(args):
-    cyd = cydra.Cydra()
-    projects = cyd.get_project_names()
-
-    for projectname in projects:
-        project = cyd.get_project(projectname)
-
-        if not project:
-            print "Unknown Project:", projectname
-        else:
-            if project.sync():
-                print "Synced Project:", projectname
-            else:
-                print "Synced FAILED:", projectname
-
-root_cmds = {'help': None, 'project': cmd_project, 'sync': sync}
-
-def cmd_help():
-    print "Usage:", sys.argv[0], '<command>'
-    print "Available commands:"
-    for cmd in root_cmds:
-        print "\t" + cmd
-
-root_cmds['help'] = cmd_help
-
-def main():
-    import logging
-    from optparse import OptionParser
-
-    parser = OptionParser()
-    parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=False)
-    (options, args) = parser.parse_args()
-
-    if options.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.ERROR)
-
-    if len(args) < 1 or args[0] not in root_cmds:
-        cmd_help()
-    else:
-        root_cmds[args[0]](args[1:])
