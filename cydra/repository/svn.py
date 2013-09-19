@@ -16,9 +16,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
-import os, os.path, stat
+import os.path
+import stat
 import subprocess
-import re
 
 import cydra
 from cydra.component import Component, implements, ExtensionPoint
@@ -29,6 +29,7 @@ from cydra.web.frontend.hooks import IRepositoryViewerProvider, IProjectFeaturel
 
 import logging
 logger = logging.getLogger(__name__)
+
 
 class SVNExternalViewer(Component):
 
@@ -56,6 +57,7 @@ class SVNExternalViewer(Component):
 
             return (self.title, [{'href': self.component_config['url_base'] + '/' + project.name,
                                   'name': 'view'}])
+
 
 class SVNRepositories(RepositoryProviderComponent):
 
@@ -103,7 +105,7 @@ class SVNRepositories(RepositoryProviderComponent):
                 # assume this is command not found
                 raise CydraError('Command not found encountered while calling svn', stderr=errors)
             else:
-                raise CydraError('Error encountered while calling svn', stderr=errors, code=hg_cmd.returncode)
+                raise CydraError('Error encountered while calling svn', stderr=errors, code=svn_cmd.returncode)
 
         # Customize config
 
@@ -113,6 +115,7 @@ class SVNRepositories(RepositoryProviderComponent):
 
     def get_params(self):
         return []
+
 
 class SVNRepository(Repository):
 
@@ -159,6 +162,7 @@ class SVNRepository(Repository):
             os.fchmod(f.fileno(), mode)
 
         super(SVNRepository, self).sync()
+
 
 def commit_hook():
     """Hook for svn"""

@@ -17,8 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 
-import sys
-import os
 import os.path
 import yaml
 
@@ -26,6 +24,7 @@ from cydra.error import InsufficientConfiguration
 from cydra.component import Component, implements
 from cydra.datasource import IDataSource, IPubkeyStore
 from cydra.project import is_valid_project_name, Project
+
 
 class FileDataSource(Component):
     """Datasource that saves projects into files
@@ -37,7 +36,8 @@ class FileDataSource(Component):
         config = self.get_component_config()
 
         if 'base' not in config:
-            raise InsufficientConfiguration(missing='base', component=self.get_component_name())
+            raise InsufficientConfiguration(missing='base',
+                                        component=self.get_component_name())
         self._base = config['base']
 
     def _get_project_path(self, name):

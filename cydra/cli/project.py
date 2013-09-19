@@ -22,11 +22,13 @@ from pprint import pprint
 from cydra.component import ExtensionPoint
 from cydra.cli.common import Command, ICliProjectCommandProvider
 
+
 class ProjectCommand(Command):
     def __init__(self, cydra_instance):
         super(ProjectCommand, self).__init__(cydra_instance)
 
-        further_commands = ExtensionPoint(ICliProjectCommandProvider, component_manager=self.cydra).get_cli_project_commands()
+        further_commands = ExtensionPoint(ICliProjectCommandProvider,
+                    component_manager=self.cydra).get_cli_project_commands()
         commands = []
         for x in further_commands:
             if x is None:
@@ -34,7 +36,7 @@ class ProjectCommand(Command):
             commands.extend(x)
 
         for cmd in commands:
-            func = lambda x, y: cmd[1](project, y)
+            func = lambda x, y: cmd[1](self.project, y)
             func.__doc__ = cmd[1].__doc__
             func.__name__ = cmd[0]
             setattr(self, cmd[0], types.MethodType(func, self, self.__class__))
@@ -61,14 +63,14 @@ class ProjectCommand(Command):
         for repotype in self.project.repositories:
             repos.extend(repotype.get_repositories(self.project))
 
-        print ', '.join(['%s (%s)' % (repo.name, repo.type) for repo in repos])
+        print(', '.join(['%s (%s)' % (r.name, r.type) for r in repos]))
 
     def sync(self, args):
         """Sync project"""
         if self.project.sync():
-            print "Sync successful"
+            print("Sync successful")
         else:
-            print "Sync failed"
+            print("Sync failed")
 
     def syncrepos(self, args):
         """Sync all repositories in project"""
@@ -77,13 +79,13 @@ class ProjectCommand(Command):
             repos.extend(repotype.get_repositories(self.project))
 
         for repo in repos:
-            print "Syncing: %s (%s)" % (repo.name, repo.type)
+            print("Syncing: %s (%s)" % (repo.name, repo.type))
 
             repo.sync()
 
     def createrepo(self, args):
         """Create a new repository
-        
+
         Syntax: createrepo <type> <name>"""
 
         if len(args) < 2:
@@ -96,14 +98,14 @@ class ProjectCommand(Command):
                 break
 
         if repotype is None:
-            print "Unknown repository type!"
+            print("Unknown repository type!")
             return
 
         repotype.create_repository(self.project, args[1])
 
     def postcommit(self, args):
         """Post commit hook for one or more revisions
-        
+
         Syntax: postcommit <type> <name> <rev+>"""
 
         if len(args) < 3:
@@ -112,14 +114,14 @@ class ProjectCommand(Command):
         repository = self.project.get_repository(args[0], args[1])
 
         if not repository:
-            print "Unknown repository"
+            print("Unknown repository")
             return
 
         repository.notify_post_commit(args[2:])
 
     def setperm(self, args):
         """Set permission
-        
+
         Syntax: setperm <userid> <object> <permission> <value>"""
         if len(args) != 4:
             return self.help(['setperm'])
@@ -132,19 +134,19 @@ class ProjectCommand(Command):
         elif value.lower() in ['none']:
             value = None
         else:
-            print "Unknown value: " + value
+            print("Unknown value:", value)
             return
 
         user = self.cydra.get_user(userid=args[0])
 
         if self.project.set_permission(user, args[1], args[2], value):
-            print "Done"
+            print("Done")
         else:
-            print "Failed"
+            print("Failed")
 
     def setgroupperm(self, args):
         """Set group permission
-        
+
         Syntax: setgroupperm <groupid> <object> <permission> <value>"""
         if len(args) != 4:
             return self.help(['setgroupperm'])
@@ -157,19 +159,19 @@ class ProjectCommand(Command):
         elif value.lower() in ['none', 'unset']:
             value = None
         else:
-            print "Unknown value: " + value
+            print("Unknown value:", value)
             return
 
         group = self.cydra.get_group(groupid=args[0])
 
         if self.project.set_group_permission(group, args[1], args[2], value):
-            print "Done"
+            print("Done")
         else:
-            print "Failed"
+            print("Failed")
 
     def setowner(self, args):
         """Set owner of project
-        
+
         Syntax: setowner <username>"""
         user = self.cydra.get_user(username=args[0])
 
@@ -177,11 +179,12 @@ class ProjectCommand(Command):
         self.project.data['owner'] = user.userid
         self.project.save()
 
-        print user.full_name, 'is now the new owner of project', self.project.name
+        print(user.full_name, 'is now the new owner of project',
+              self.project.name)
 
     def getperm(self, args):
         """Get permission
-        
+
         Syntax: getperm <userid> <object> <permission>"""
 
         if len(args) != 3:

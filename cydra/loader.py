@@ -19,15 +19,14 @@
 
 # This file contains code from trac, see trac/loader.py
 
-import os.path
 import pkg_resources
-from pkg_resources import working_set, DistributionNotFound, VersionConflict, UnknownExtra
-import sys
+from pkg_resources import working_set
 
 __all__ = ['load_components']
 
 import logging
 logger = logging.getLogger(__name__)
+
 
 def load_eggs(ch, entry_point, search_path, only_enabled=True):
     """Loader that loads any eggs on the search path and `sys.path`."""

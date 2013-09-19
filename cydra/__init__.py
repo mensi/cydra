@@ -35,9 +35,10 @@ from cydra.datasource import IDataSource
 from cydra.permission import IPermissionProvider, IUserTranslator, User
 from cydra.caching.subject import ISubjectCache
 
+
 class Cydra(Component, ComponentManager):
     """Main point of integration
-    
+
     This is the main class that figures as the component manager,
     is in charge of keeping track of a configuration and contains
     a set of convenience methods (eg. project retrieval, user lookup)"""

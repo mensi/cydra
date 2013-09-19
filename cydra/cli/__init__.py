@@ -21,6 +21,7 @@ from cydra import Cydra
 from cydra.cli.common import Command, ICliProjectCommandProvider
 from cydra.cli.project import ProjectCommand
 
+
 class RootCommand(Command):
     def project(self, args):
         """Commands on projects"""
@@ -47,7 +48,8 @@ def main():
     from optparse import OptionParser
 
     parser = OptionParser()
-    parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=False)
+    parser.add_option('-v', '--verbose',
+                      action='store_true', dest='verbose', default=False)
     (options, args) = parser.parse_args()
 
     if options.verbose:

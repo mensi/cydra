@@ -20,6 +20,7 @@
 from cydra.component import Interface, Component, implements
 from cydra.util import SimpleCache
 
+
 class ISubjectCache(Interface):
     def get_user(self, userid):
         pass
@@ -42,6 +43,7 @@ class ISubjectCache(Interface):
     def add_groups(self, groups):
         pass
 
+
 class MemorySubjectCache(Component):
     """Caches subjects in memory
     """
@@ -55,8 +57,14 @@ class MemorySubjectCache(Component):
         userttl = config.get('user_ttl', 5 * 60)
         usersize = config.get('user_size', 500)
 
-        self.groupcache = SimpleCache(lifetime=groupttl, killtime=groupttl, maxsize=groupsize)
-        self.usercache = SimpleCache(lifetime=userttl, killtime=userttl, maxsize=usersize)
+        self.groupcache = SimpleCache(
+            lifetime=groupttl,
+            killtime=groupttl,
+            maxsize=groupsize)
+        self.usercache = SimpleCache(
+            lifetime=userttl,
+            killtime=userttl,
+            maxsize=usersize)
         self.usernamemap = {}
 
     def get_user(self, userid):

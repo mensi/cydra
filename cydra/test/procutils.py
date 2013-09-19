@@ -5,6 +5,7 @@ import threading
 import sys
 import unittest
 
+
 class MonitoredDaemon(object):
     name = ""
 
@@ -58,7 +59,7 @@ class MonitoredDaemon(object):
             if wait_for_stdout is not None and wait_for_stdout in self.stdout:
                 self.stdout_encountered.set()
 
-            if self.stdout_limit is not None and len(buf) > self.stdout_limit:
+            if self.stdout_limit is not None and len(self.stdout) > self.stdout_limit:
                 self.stdout = self.stdout[-self.stdout_limit:]
 
     def read_stderr(self, wait_for_stderr=None):
@@ -68,7 +69,7 @@ class MonitoredDaemon(object):
             if wait_for_stderr is not None and wait_for_stderr in self.stderr:
                 self.stderr_encountered.set()
 
-            if self.stderr_limit is not None and len(buf) > self.stderr_limit:
+            if self.stderr_limit is not None and len(self.stderr) > self.stderr_limit:
                 self.stderr = self.stderr[-self.stderr_limit:]
 
 class ProcessHelpers(unittest.TestCase):

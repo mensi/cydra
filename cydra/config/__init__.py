@@ -31,6 +31,7 @@ default_configuration = {
     }
 }
 
+
 class IConfigurationProvider(Interface):
     """Interface for Components providing configuration"""
 
@@ -38,16 +39,18 @@ class IConfigurationProvider(Interface):
         """Returns a dict with configuration data"""
         pass
 
+
 class MergeException(Exception):
     pass
 
+
 class Configuration(Component):
     """Encapsulates the configuration
-    
+
     Configuration is held as a dict
-    
+
     Example::
-    
+
         {
             'plugin_paths': ['/some/path'],
             'components':
@@ -62,7 +65,8 @@ class Configuration(Component):
         }
     """
 
-    configuration_providers = ExtensionPoint(IConfigurationProvider, caching=False)
+    configuration_providers = ExtensionPoint(IConfigurationProvider,
+                                             caching=False)
     config_discovery = False
     loaded_providers = None
 
@@ -77,12 +81,12 @@ class Configuration(Component):
 
     def get_component_config(self, component, default=None):
         """Find configuration node for a component
-        
+
         """
         ret = self._data.setdefault('components', {}).get(component, default)
 
-        # since setting a component to True or False is a short-hand to enable/disable
-        # the component, also return the default in this case
+        # since setting a component to True or False is a short-hand to
+        # enable/disable the component, also return the default in this case
         if isinstance(ret, bool):
             return default
         else:
@@ -95,21 +99,23 @@ class Configuration(Component):
         enabled = self._data.setdefault('components', {}).get(component, None)
 
         if self.config_discovery and enabled != False:
-            logger.debug("Component %s enabled due to config_discovery mode", component)
+            logger.debug("Component %s enabled due to config_discovery mode",
+                         component)
             return True
 
         return bool(enabled)
 
     def load(self, config=None):
         """Load configuration data into the config tree
-        
+
         If config is None, the default configuration will be loaded
         """
         self.config_discovery = True
 
         if config is not None:
             self._load(config)
-        elif self._data == {} or self._data == {'components':{}}:  # only load default config if config is empty
+        elif self._data == {} or self._data == {'components': {}}:
+            # only load default config if config is empty
             self._load(default_configuration)
 
         # if new configuration providers have been enabled, query them
@@ -121,13 +127,12 @@ class Configuration(Component):
         self.config_discovery = False
 
     def _load(self, config):
-
-        root = self._data
         plugin_paths_dirty = False
 
         for k, v in config.iteritems():
             if k == 'plugin_paths':
-                self._data.setdefault('plugin_paths', set()).update(config['plugin_paths'])
+                pp = self._data.setdefault('plugin_paths', set())
+                pp.update(config['plugin_paths'])
                 plugin_paths_dirty = True
             else:
                 if isinstance(v, dict):
@@ -139,19 +144,22 @@ class Configuration(Component):
                 else:
                     self._data[k] = v
 
-        if plugin_paths_dirty :
-            load_components(self.cydra, self._data.get('plugin_paths', set()))  # new plugin paths, load from those
+        if plugin_paths_dirty:
+            # new plugin paths, load from those
+            load_components(self.cydra, self._data.get('plugin_paths', set()))
 
     def merge(self, dest, source):
         """Merges a subtree into a subtree of the config
-        
+
         Recurses into dicts
-        
-        :param dest: Object to merge into. This should be a node of the config tree
+
+        :param dest: Object to merge into.
+                     This should be a node of the config tree
         :param source: Source for merge.
         """
         if type(dest) != type(source):
-            raise MergeException("Types do not match: %s, %s" % (type(dest).__name__, type(source).__name__))
+            raise MergeException("Types do not match: %s, %s" % (
+                                type(dest).__name__, type(source).__name__))
 
         if isinstance(dest, dict):
             for k, v in source.iteritems():

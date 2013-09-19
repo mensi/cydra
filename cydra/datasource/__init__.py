@@ -21,6 +21,7 @@ __all__ = ['IPubkeyStore', 'IDataSource']
 
 from cydra.component import Interface, FallbackAttributeProxy
 
+
 class IPubkeyStore(Interface):
     """Interface for places to store/retrieve public keys"""
 
@@ -41,6 +42,7 @@ class IPubkeyStore(Interface):
     def remove_pubkey(self, user, **kwargs):
         pass
 
+
 class IDataSource(Interface):
     """Interface for data sources"""
 
@@ -48,26 +50,26 @@ class IDataSource(Interface):
 
     def get_project(self, projectname):
         """Load a project
-        
+
         :returns: Dict with project data or None"""
         pass
 
     def save_project(self, project):
         """Save project data
-        
+
         :param project: A Project instance"""
         pass
 
     def create_project(self, projectname, owner):
         """Create a project
-        
+
         :param projectname: The name of the project
         :param owner: User object of the owner of this project"""
         pass
 
     def delete_project(self, project):
         """Delete project
-        
+
         :param project: A Project instance"""
 
     def list_projects(self):
@@ -76,23 +78,25 @@ class IDataSource(Interface):
 
     def get_project_names(self):
         """Get all project names
-        
-        This is intended to be used when it is not a good idea to retrieve and hold 
-        the entire projects in memory"""
+
+        This is intended to be used when it is not a good idea to retrieve
+        and hold the entire projects in memory"""
         pass
 
     def get_projects_owned_by(self, user):
         """Get all projects owned by a given user
-        
+
         :param user: The User object for the desired user"""
         pass
 
     def get_projects_where_key_exists(self, key):
         """Get all projects where a certain key exists in its data
-        
-        Example to search if a certain UserID is a key in the permissions sub-dict::
-        
+
+        Example to search if a certain UserID is a key in the permissions
+        sub-dict::
+
         get_projects_where_key_exists(['permissions', 'userid'])
-        
-        :param key: The key to look for. Can be a list to search for a nested key"""
+
+        :param key: The key to look for. Can be a list to search for a nested
+                    key"""
         pass

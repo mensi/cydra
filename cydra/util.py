@@ -18,7 +18,8 @@
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 import time
 import tarfile
-import os, os.path
+import os.path
+
 
 class NoopArchiver(object):
     """Noop archiver"""
@@ -33,6 +34,7 @@ class NoopArchiver(object):
 
     def dump_as_file(self, data, filename):
         pass
+
 
 class TarArchiver(object):
     """Context Manager for archiving files"""
@@ -56,7 +58,7 @@ class TarArchiver(object):
     def add_path(self, source, filename=None):
         """Adds a file or directory to the archive"""
         if not filename:
-            os.path.join(prefix, os.path.basename(source.rstrip('/')))
+            os.path.basename(source.rstrip('/'))
         self.tar.add(source, filename)
 
     def dump_as_file(self, data, filename):
@@ -78,17 +80,17 @@ class TarArchiver(object):
             self.tar.close()
 
 
-def get_collator(callable):
+def get_collator(target_callable):
     """Calls the callable and iterates through the result.
-    
-    Every item is either a list or a scalar or None. This 
+
+    Every item is either a list or a scalar or None. This
     returns a function that merges all items into one list, ignoring the Nones
-    
+
     Example:
     Callable returns [1,[3,4],None]. Result will be [1,3,4]"""
     def func(*args, **kwargs):
         result = []
-        for x in callable(*args, **kwargs):
+        for x in target_callable(*args, **kwargs):
             if isinstance(x, list):
                 result.extend(x)
             elif x:
@@ -96,37 +98,6 @@ def get_collator(callable):
         return result
 
     return func
-
-def archive_data(data_path, archive_name):
-    """Interfaces with tar to archive
-    
-    :param data_path: Path to data to archive. Can be a file or directory
-    :param archive_name: Path to archive file. Do not add a file extension since it will be different depending on method 
-    :returns: True on success, False on failure"""
-    import subprocess
-    import os.path
-
-    target_path = archive_name + '.tar.gz'
-    if not os.path.exists(os.path.dirname(target_path)):
-        logger.error('Archive target directory does not exist: %s', target_path)
-        return False
-
-    if os.path.exists(target_path):
-        logger.error('Archive target file already exists: %s', target_path)
-        return False
-
-    if not os.path.exists(data_path):
-        logger.error('Data path does not exist: %s', data_path)
-        return False
-
-    tarproc = subprocess.Popen(['tar', 'czf', target_path, data_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output = tarproc.communicate()
-
-    if tarproc.returncode != 0:
-        logger.error('Tar failed with returncode %d: %s', tarproc.returncode, output[1])
-        return False
-    else:
-        return True
 
 
 class SimpleCacheItem(object):
@@ -145,8 +116,8 @@ class SimpleCacheItem(object):
 
 class SimpleCache(object):
     """A simple in-memory cache
-    
-    This class does not do any locking. This means that keys should map to 
+
+    This class does not do any locking. This means that keys should map to
     relatively stable, immutable values"""
     def __init__(self, lifetime=30, killtime=None, maxsize=100):
         self.data = {}
@@ -193,12 +164,12 @@ class SimpleCache(object):
                 del(self.data[key])
 
     def _remove_oldest(self):
-        min = time.time()
+        mintime = time.time()
         minkey = None
 
         for key, item in self.data.items():
-            if item.last_access < min:
-                min = item.last_access
+            if item.last_access < mintime:
+                mintime = item.last_access
                 minkey = key
 
         if minkey is not None:

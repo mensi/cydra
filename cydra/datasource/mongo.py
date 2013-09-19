@@ -17,8 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 
-import sys
-
 from pymongo.mongo_client import MongoClient
 from pymongo import ASCENDING
 from bson import binary
@@ -28,9 +26,10 @@ from cydra.component import Component, implements
 from cydra.datasource import IDataSource, IPubkeyStore
 from cydra.project import is_valid_project_name, Project
 
+
 class MongoDataSource(Component):
     """Datasource that saves projects into a MongoDB database
-    
+
     This datasource encodes keys to allow for '.' in key names.
     """
 
@@ -41,10 +40,14 @@ class MongoDataSource(Component):
         config = self.get_component_config()
 
         if 'host' not in config:
-            raise Exception('Host not configured')
+            raise InsufficientConfiguration(
+                    missing='host',
+                    component=self.get_component_name())
 
         if 'database' not in config:
-            raise Exception('Database not configured')
+            raise InsufficientConfiguration(
+                    missing='database',
+                    component=self.get_component_name())
 
         connection_args = {'host': config['host']}
         if 'port' in config:
@@ -58,7 +61,10 @@ class MongoDataSource(Component):
 
     @staticmethod
     def _encode_key(val, magic='%'):
-        """Helper function to encode . in keys as mongoDB does not allow them"""
+        """Helper function to encode dots in keys
+
+        This is necessary for MongoDB since it does not properly handle
+        dots in keys"""
         ret = val
 
         ret = ret.replace(magic, magic + '1')
@@ -68,7 +74,7 @@ class MongoDataSource(Component):
 
     @staticmethod
     def _decode_key(val, magic='%'):
-        """Helper function to decode . in keys as mongoDB does not allow them"""
+        """Helper function to decode dots in keys"""
         ret = val
 
         ret = ret.replace(magic + '2', '.')
@@ -125,7 +131,9 @@ class MongoDataSource(Component):
             return None
 
         if self.get_project(projectname) is None:
-            self.database.projects.insert({'name': projectname, 'owner': owner.userid})
+            self.database.projects.insert({
+                'name': projectname,
+                'owner': owner.userid})
             return self.get_project(projectname)
 
     def delete_project(self, project):

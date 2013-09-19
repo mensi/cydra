@@ -19,15 +19,17 @@
 from itertools import chain
 from cydra.component import Interface, BroadcastAttributeProxy
 
+
 class ICliProjectCommandProvider(Interface):
 
     _iface_attribute_proxy = BroadcastAttributeProxy()
 
     def get_cli_project_commands(self):
         """Provide further commands for the CLI
-        
+
         :returns: A list of ('command', function) tuples"""
         pass
+
 
 class Command(object):
     def __init__(self, cydra_instance):
@@ -51,12 +53,12 @@ class Command(object):
             else:
                 print("Unknown command: " + args[0])
 
-        cmds = [x for x in chain(self.__class__.__dict__, self.__dict__) if callable(getattr(self, x)) and x[0] != '_']
+        cmds = [x for x in chain(self.__class__.__dict__, self.__dict__)
+                if callable(getattr(self, x)) and x[0] != '_']
         maxlen = max(len(x) for x in cmds)
         print("Available commands:")
         for cmd in cmds:
             doc = getattr(self, cmd).__doc__
             doc = doc if doc is not None else ""
-            print('\t' + cmd + ': ' + ' ' * (maxlen - len(cmd)) + doc.split('\n')[0])
-
-
+            print('\t' + cmd + ': ' + ' ' * (maxlen - len(cmd)) +
+                  doc.split('\n')[0])

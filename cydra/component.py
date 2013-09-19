@@ -22,16 +22,16 @@
 __all__ = ['Component', 'implements', 'Interface', 'ExtensionPoint',
            'FallbackAttributeProxy', 'BroadcastAttributeProxy']
 
-import warnings
 import logging
 logger = logging.getLogger(__name__)
 
+
 class Interface(object):
     """Marker base class for extension point interfaces.
-    
-    Behavior of the ExtensionPoints for an interface can be customized with 
-    _iface_XY class attributes. These behaviors are specified in the interface 
-    in order to establish common ground rules in accessing the components for 
+
+    Behavior of the ExtensionPoints for an interface can be customized with
+    _iface_XY class attributes. These behaviors are specified in the interface
+    in order to establish common ground rules in accessing the components for
     an interface."""
 
     _iface_single_extension = False
@@ -39,37 +39,38 @@ class Interface(object):
 
     _iface_attribute_proxy = None
     """Callable to use for attribute access
-    
+
     The callable will receive the paramenters interface, components and name (in this order)"""
 
     _iface_disable_extension_cache = False
     """Disable the cache for the active extensions"""
 
+
 class ExtensionPoint(object):
     """Extension point for an interface
-    
+
     You can use an extension point in a class definition::
-    
+
         class Foo(Component):
             bars = ExtensionPoint(IBar)
-            
+
             def __init__(self):
                 print(list(self.bars))
-    
+
     Or standalone::
-    
+
         def foo():
             c = Cydra()
             bars = ExtensionPoint(IBar, component_manager=cydra)
             print(list(bars))
-            
+
     In both cases, the extension point has to be bound to a component manager
     before usage. When used in a class definition, the class has to have a
     compmgr attribute at runtime; children of Component that are loaded via
     the component machinery will already satisfy this condition. Standalone
     extension point instances have to be supplied with a component manager
     explicitly.
-    
+
     Iterating an extension point will yield the enabled components implementing
     the given interface. Further behaviour depends on the interface itself. Usually
     you will be able to call the interfaces functions. Depending on the attribute
@@ -100,7 +101,7 @@ class ExtensionPoint(object):
         self._name = name
         self._component_manager = component_manager
 
-        # hackedy hack docstring for sphinx
+        # Generate a useful docstring to avoid generic help everywhere
         self.__doc__ = ':class:`cydra.component.ExtensionPoint` for :class:`%s`' % (
             interface.__module__ + '.' + interface.__name__,)
 
@@ -173,7 +174,7 @@ class ExtensionPoint(object):
 
 class FallbackAttributeProxy(object):
     """Proxy for use in interfaces
-    
+
     Tries one extension after the other until something not None is returned"""
 
     def __init__(self):
@@ -195,14 +196,15 @@ class FallbackAttributeProxy(object):
                     return ret
             return None
 
+
 class BroadcastAttributeProxy(object):
     """Proxy for use in interfaces
-    
+
     Calls all extensions and returns a list with the results"""
 
     def __init__(self, merge_lists=False):
         """Init BroadcastAttributeProxy
-        
+
         :param merge_lists: Consider return values to be lists and merge them into a single list"""
         self.merge_lists = merge_lists
 
@@ -228,18 +230,19 @@ class BroadcastAttributeProxy(object):
             result = res
         return result
 
+
 class ComponentMeta(type):
     """Meta class for components.
-    
+
     Takes care of component and extension point registration.
     """
     _components = []
     _registry = {}
 
-    def __new__(mcs, name, bases, d):
+    def __new__(cls, name, bases, d):
         """Create the component class."""
 
-        new_class = type.__new__(mcs, name, bases, d)
+        new_class = type.__new__(cls, name, bases, d)
         if name == 'Component':
             # Don't put the Component base class in the registry
             return new_class
@@ -258,32 +261,32 @@ class ComponentMeta(type):
 
         return new_class
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         """Return an existing instance of the component if it has
         already been activated, otherwise create a new instance.
         """
         # If this component is also the component manager, just invoke that
-        if issubclass(cls, ComponentManager):
-            self = cls.__new__(cls)
-            self.compmgr = self
-            self.__init__(*args, **kwargs)
-            return self
+        if issubclass(self, ComponentManager):
+            component = self.__new__(self)
+            component.compmgr = component
+            component.__init__(*args, **kwargs)
+            return component
 
         # The normal case where the component is not also the component manager
         compmgr = args[0]
-        self = compmgr.components.get(cls)
+        component = compmgr.components.get(self)
         # Note that this check is racy, we intentionally don't use a
         # lock in order to keep things simple and avoid the risk of
         # deadlocks, as the impact of having temporarily two (or more)
         # instances for a given `cls` is negligible.
-        if self is None:
-            self = cls.__new__(cls)
-            self.compmgr = compmgr
-            compmgr.component_activated(self)
-            self.__init__()
+        if component is None:
+            component = self.__new__(self)
+            component.compmgr = compmgr
+            compmgr.component_activated(component)
+            component.__init__()
             # Only register the instance once it is fully initialized (#9418)
-            compmgr.components[cls] = self
-        return self
+            compmgr.components[self] = component
+        return component
 
 
 class Component(object):
@@ -378,7 +381,7 @@ class ComponentManager(object):
 
     def disable_component(self, component):
         """Force a component to be disabled.
-        
+
         :param component: can be a class or an instance.
         """
         if not isinstance(component, type):
