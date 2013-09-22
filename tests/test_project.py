@@ -20,6 +20,7 @@ import os.path
 from cydra.test.fixtures import *
 from cydra.test import getConfiguredTestCase
 
+
 def parameterized(name, fixture):
     class TestProjectOps(getConfiguredTestCase(fixture)):
         """Tests for basic project functionality"""
@@ -67,10 +68,8 @@ def parameterized(name, fixture):
             for path in repopaths:
                 self.assertFalse(os.path.exists(path), "Repository path was not removed")
 
-
     TestProjectOps.__name__ = name
     return TestProjectOps
 
 TestProjectOps_File = parameterized("TestProjectOps_File", FullWithFileDS)
 TestProjectOps_Mongo = parameterized("TestProjectOps_Mongo", FullWithMongoDS)
-
