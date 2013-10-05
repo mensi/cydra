@@ -42,6 +42,11 @@ class RootCommand(Command):
                 else:
                     print "Synced FAILED:", projectname
 
+    def listcomponents(self, args):
+        """List all known components"""
+
+        pass
+
 
 def main():
     import logging
