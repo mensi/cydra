@@ -18,6 +18,10 @@
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 import os.path
 import re
+import traceback
+import signal
+import grp
+import pwd
 
 from twisted.internet import reactor
 from twisted.conch.ssh import keys
@@ -35,6 +39,7 @@ from gitserverglue import ssh, http, find_git_viewer
 
 import logging
 logger = logging.getLogger(__name__)
+
 
 class GitServerGlue(Component):
     """Cydra component for integration between GitServerGlue and Cydra"""
@@ -69,6 +74,7 @@ class GitServerGlue(Component):
 
             return ('Git HTTP', [{'href': self.component_config['http_url_base'] + '/' + project.name,
                                   'name': 'view'}])
+
 
 class CydraHelper(object):
 
@@ -162,6 +168,9 @@ class CydraHelper(object):
             if len(pathparts) - len(prefixparts) < 1 or not cydra.project.is_valid_project_name(pathparts[len(prefixparts)]):
                 return
             res['cydra_project'] = project = self.cydra.get_project(pathparts[len(prefixparts)])
+
+            if project is None:
+                return
             res['repository_base_url_path'] = '/' + '/'.join(prefixparts + [project.name]) + '/'
 
             reponame = pathparts[len(prefixparts) + 1] if len(pathparts) >= len(prefixparts) + 2 else None
@@ -188,14 +197,13 @@ class CydraHelper(object):
 
         return res
 
+
 def run_server():
-    import logging
     import logging.handlers
     from optparse import OptionParser
 
     parser = OptionParser()
     parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=False)
-    parser.add_option('-d', '--daemonize', action='store_true', dest='daemonize', default=False)
     parser.add_option('-i', '--pidfile', action='store', dest='pidfile', default=None)
     parser.add_option('-l', '--logfile', action='store', dest='logfile', default=None)
     parser.add_option('-u', '--user', action='store', dest='user', default=None)
@@ -203,6 +211,9 @@ def run_server():
     parser.add_option('-s', '--sshport', action='store', type='int', dest='sshport', default=2222)
     parser.add_option('-w', '--httpport', action='store', type='int', dest='httpport', default=8080)
     (options, args) = parser.parse_args()
+
+    if (options.user is None) ^ (options.group is None):
+        raise Exception("Both user and group have to be specified")
 
     # configure logging
     formatter = logging.Formatter('[%(asctime)s] %(levelname)s: <%(name)s@%(filename)s:%(lineno)d> %(message)s')
@@ -252,52 +263,29 @@ def run_server():
         git_viewer=find_git_viewer()
     )
 
-    # daemonize if requested
-    if options.daemonize:
-        if not options.logfile:
-            print "Error: Cannot log to stderr, please specify a log file"
-            return
-
-        import daemon, grp, pwd
-
-        files = [handler.stream]
-
-        if options.pidfile:
-            pidf = open(options.pidfile, 'w')
-            files.append(pidf)
-
-        args = dict(files_preserve=files)
-
-        if options.group:
-            if options.group.isdigit():
-                args['gid'] = int(options.group)
-            else:
-                args['gid'] = grp.getgrnam(options.group).gr_gid
-        elif os.getgid() == 0:
-            args['gid'] = grp.getgrnam('www-data').gr_gid
-
-
-        if options.user:
-            if options.user.isdigit():
-                args['uid'] = int(options.user)
-            else:
-                args['uid'] = pwd.getpwnam(options.user).pw_uid
-        elif os.getuid() == 0:
-            args['uid'] = pwd.getpwnam('www-data').pw_uid
-
-        context = daemon.DaemonContext(**args)
-        context.open()
-
-        # save pid to file
-        if options.pidfile:
+    # save pid to file if requested
+    if options.pidfile:
+        with open(options.pidfile) as pidf:
             pidf.write(str(os.getpid()))
-            pidf.close()
 
-    import traceback, signal
-    def dump_stack(sig, frame):
-        logger.debug("Dumping Stack: \n" + ''.join(traceback.format_stack(frame)))
-    signal.signal(signal.SIGUSR1, dump_stack)
+    try:
 
-    reactor.listenTCP(options.sshport, ssh_factory)
-    reactor.listenTCP(options.httpport, http_factory)
-    reactor.run()
+        def dump_stack(sig, frame):
+            logger.debug("Dumping Stack: \n" + ''.join(traceback.format_stack(frame)))
+        signal.signal(signal.SIGUSR1, dump_stack)
+
+        reactor.listenTCP(options.sshport, ssh_factory)
+        reactor.listenTCP(options.httpport, http_factory)
+
+        # drop privileges if requested
+        if os.getuid() == 0 and options.user:
+            uid = int(options.user) if options.user.isdigit() else pwd.getpwnam(options.user).pw_uid
+            gid = int(options.group) if options.group.isdigit() else grp.getgrnam(options.group).gr_gid
+
+            os.setgroups([])
+            os.setgid(gid)
+            os.setuid(uid)
+
+        reactor.run()
+    except Exception:
+        logger.exception("Caught exception during run")
