@@ -54,7 +54,7 @@ class Cydra(Component, ComponentManager):
     def reuse_last_instance(cls, *args, **kwargs):
         """Reuse the most recently created :class:`Cydra` instance or create a new one
 
-        By using this class method, you can reuse a previously created instance 
+        By using this class method, you can reuse a previously created instance
         instead of creating a new one."""
 
         if cls._last_instance is not None:
