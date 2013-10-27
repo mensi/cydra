@@ -157,6 +157,9 @@ class ExtensionPoint(object):
     def __iter__(self):
         return iter(self._get_extensions())
 
+    def __len__(self):
+        return len(self._get_extensions())
+
     # Attribute access
     def __getattr__(self, name):
         if self._interface._iface_single_extension:
