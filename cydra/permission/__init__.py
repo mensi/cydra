@@ -188,6 +188,12 @@ class Subject(object):
     def __eq__(self, other):
         return self.id == other.id
 
+    def __ne__(self, other):
+        return self.id != other.id
+
+    def __cmp__(self, other):
+        return cmp(self.id, other.id)
+
 class Group(Subject):
     """Represents a group"""
 
@@ -199,7 +205,7 @@ class Group(Subject):
         self.groupid = groupid
 
         for key, value in kwargs.items():
-            if not hasattr(self, key) or getattr(self, key) is None: #do not overwrite internals
+            if not hasattr(self, key) or getattr(self, key) is None:  # do not overwrite internals
                 setattr(self, key, value)
 
     @property
@@ -222,7 +228,7 @@ class User(Subject):
         self.userid = userid
 
         for key, value in kwargs.items():
-            if not hasattr(self, key) or getattr(self, key) is None or getattr(self, key) == []: #do not overwrite internals
+            if not hasattr(self, key) or getattr(self, key) is None or getattr(self, key) == []:  # do not overwrite internals
                 setattr(self, key, value)
 
     @property
@@ -232,6 +238,7 @@ class User(Subject):
     @property
     def id(self):
         return self.userid
+
 
 class IUserTranslator(Interface):
     """Translates various aspects of users"""
@@ -332,7 +339,7 @@ class InternalPermissionProvider(Component):
 
     def _get_permissions(self, mode, project, subject, obj):
         if project is None:
-            return {} # no project, no permissions
+            return {}  # no project, no permissions
 
         # Resolve root of permissions and translator
         # depending on what we try to find
@@ -348,7 +355,7 @@ class InternalPermissionProvider(Component):
         perms = project.data.get(permroot, {})
 
         # if both subject and obj are None, return all (subject, obj, perm)
-        # copy whole structure to prevent side effects 
+        # copy whole structure to prevent side effects
         if subject is None and obj is None:
             for s, objs in perms.items():
                 s = translator(s)
@@ -413,7 +420,7 @@ class InternalPermissionProvider(Component):
 
         # also inject all group permissions
         if mode == self.MODE_USER:
-            for group in [x for x in subject.groups if x is not None]: # safeguard against failing translators
+            for group in [x for x in subject.groups if x is not None]:  # safeguard against failing translators
                 res.update(self.get_group_permissions(project, group, obj))
 
         return res
@@ -460,7 +467,7 @@ class InternalPermissionProvider(Component):
         # root level -> find subject in perms
         if subject.id in perms:
             perms = perms[subject.id]
-        elif mode == self.MODE_USER and '*' in perms: # if we are in user mode, fall back to guest
+        elif mode == self.MODE_USER and '*' in perms:  # if we are in user mode, fall back to guest
             perms = perms['*']
         else:
             return ret
