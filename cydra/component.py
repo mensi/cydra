@@ -298,6 +298,9 @@ class Component(object):
     __metaclass__ = ComponentMeta
     __config = None
 
+    #: Component Manager of this Component
+    compmgr = None
+
     @staticmethod
     def implements(*interfaces):
         """Can be used in the class definition of `Component`
