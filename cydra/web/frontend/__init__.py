@@ -64,8 +64,8 @@ def usersettings():
         pubkey_support = False
     else:
         store = ExtensionPoint(IPubkeyStore, component_manager=cydra_instance)
+        pubkey_support = len(store) > 0
         pubkeys = store.get_pubkeys(cydra_user)
-
 
     return render_template('usersettings.jhtml', pubkey_support=pubkey_support, pubkeys=pubkeys)
 
@@ -132,6 +132,41 @@ def project(projectname):
                            get_repository_actions=get_collator(repository_action_providers.get_repository_actions),
                            featurelist=get_collator(featurelist_item_providers.get_project_featurelist_items)(project))
 
+
+@blueprint.route('/project/<projectname>/delete', methods=['GET'])
+def confirm_delete_project(projectname):
+    project = cydra_instance.get_project(projectname)
+    if project is None:
+        raise NotFound('Unknown project')
+
+    if project.owner != cydra_user:
+        raise InsufficientPermissions()
+
+    # if not project.get_permission(cydra_user, '*', 'admin'):
+    #     raise InsufficientPermissions()
+
+    return render_template('confirm_delete_project.jhtml',
+                           project=project)
+
+
+@blueprint.route('/project/<projectname>/delete', methods=['POST'])
+def delete_project(projectname):
+    project = cydra_instance.get_project(projectname)
+    if project is None:
+        raise NotFound('Unknown project')
+
+    if project.owner != cydra_user:
+        raise InsufficientPermissions()
+
+    # if not project.get_permission(cydra_user, '*', 'admin'):
+    #     raise InsufficientPermissions()
+
+    project.delete()
+
+    flash('Project ' + projectname + ' deleted', 'success')
+    return redirect(url_for('.userhome'))
+
+
 @blueprint.route('/project/<projectname>/define_user_project_perms', methods=['POST'])
 def define_user_project_perms(projectname):
     project = cydra_instance.get_project(projectname)
@@ -165,6 +200,7 @@ def define_user_project_perms(projectname):
     flash('Permissions successufully set', 'success')
     return redirect(url_for('.project', projectname=projectname))
 
+
 @blueprint.route('/project/<projectname>/define_group_project_perms', methods=['POST'])
 def define_group_project_perms(projectname):
     project = cydra_instance.get_project(projectname)
@@ -193,6 +229,7 @@ def define_group_project_perms(projectname):
     flash('Permissions successufully set', 'success')
     return redirect(url_for('.project', projectname=projectname))
 
+
 @blueprint.route('/create_project', methods=['POST'])
 def create_project():
     if not cydra_instance.get_permission(cydra_user, 'projects', 'create'):
@@ -214,6 +251,7 @@ def create_project():
     else:
         flash('Project creation failed', 'error')
         return redirect(url_for('.userhome'))
+
 
 @blueprint.route('/project/<projectname>/create_repository/<repository_type>', methods=['POST'])
 def create_repository(projectname, repository_type):
@@ -257,6 +295,7 @@ def create_repository(projectname, repository_type):
         flash('Repository creation failed', 'error')
         return redirect(url_for('.project', projectname=projectname))
 
+
 @blueprint.route('/project/<projectname>/delete_repository', methods=['POST'])
 def delete_repository(projectname):
     project = cydra_instance.get_project(projectname)
@@ -276,6 +315,7 @@ def delete_repository(projectname):
 
     repository.delete()
     return redirect(url_for('.project', projectname=projectname))
+
 
 @blueprint.route('/project/<projectname>/set_repository_param', methods=['POST'])
 def set_repository_param(projectname):
@@ -300,6 +340,7 @@ def set_repository_param(projectname):
     repository.set_params(**{request.form['param']: request.form['value']})
     return redirect(url_for('.project', projectname=projectname))
 
+
 @blueprint.route('/is_projectname_available')
 def is_projectname_available():
     if not cydra_instance.get_permission(cydra_user, 'projects', 'create'):
@@ -312,6 +353,7 @@ def is_projectname_available():
             return jsonify(available=True)
 
     return jsonify(available=False)
+
 
 @blueprint.route('/project/<projectname>/perms')
 def project_perms(projectname):
@@ -338,6 +380,7 @@ def project_perms(projectname):
         raise BadRequest("Invalid User")
 
     return jsonify(userid=user.userid, username=user.username, user_full_name=user.full_name, perms=project.get_permissions(user, '*'))
+
 
 @blueprint.route('/project/<projectname>/group_perms')
 def project_group_perms(projectname):

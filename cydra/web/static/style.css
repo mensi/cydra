@@ -69,6 +69,12 @@ div.box_right > div {
 	padding-left: 0.25em;
 }
 
+div.box_center {
+	width: 60%;
+	margin-right: auto;
+	margin-left: auto;
+}
+
 input#projectname.success {
 	background-color: #ccffcc;
 }
