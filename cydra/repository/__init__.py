@@ -17,7 +17,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 
-import os, os.path, shutil
+import os
+import os.path
+import shutil
 import uuid
 from cydra.component import Component, ExtensionPoint, implements
 from cydra.repository.interfaces import ISyncParticipant, IRepositoryObserver, IRepositoryProvider
@@ -25,6 +27,7 @@ from cydra.project.interfaces import IProjectObserver
 
 import logging
 logger = logging.getLogger(__name__)
+
 
 class RepositoryParameter(object):
     def __init__(self, keyword, name, optional=True, description=""):
@@ -35,6 +38,7 @@ class RepositoryParameter(object):
 
     def validate(self, value):
         return True
+
 
 class RepositoryProviderComponent(Component):
     """Base class for components providing repositories"""
@@ -49,30 +53,39 @@ class RepositoryProviderComponent(Component):
         for repo in self.get_repositories(project):
             repo.delete(archiver, project_deletion=True)
 
+
 class Repository(object):
     """Repository base"""
 
+    #: Absolute path of the repository
     path = None
-    """Absolute path of the repository"""
 
+    #: Type of the repository (string)
     type = None
-    """Type of the repository (string)"""
 
+    #: Name of the repository
+    name = None
+
+    @property
+    def repository_provider(self):
+        """Get the repository provider of this repository"""
+        return self.project.get_repository_type(self.type)
+
+    #: Project this repository belongs to
     project = None
-    """Project this repository belongs to"""
 
     sync_participants = ExtensionPoint(ISyncParticipant)
     repository_observers = ExtensionPoint(IRepositoryObserver)
 
     def __init__(self, compmgr):
         """Construct a repository instance
-        
+
         :param compmgr: Component manager (i.e. cydra instance)"""
         self.compmgr = compmgr
 
     def sync(self):
         """Synchronize repository with data stored in project and do maintenance work
-        
+
         A repository should make sure post-commit hooks are registered and may collect statistics"""
 
         self.sync_participants.sync_repository(self)

@@ -19,6 +19,7 @@
 
 from cydra.component import Interface, BroadcastAttributeProxy
 
+
 class IRepositoryProvider(Interface):
 
     _iface_attribute_proxy = BroadcastAttributeProxy()
@@ -44,10 +45,11 @@ class IRepositoryProvider(Interface):
 
     def get_params(self):
         """Return the list of parameters for this repository type
-        
-        :return: list of RepositoryParameter instances  
+
+        :return: list of RepositoryParameter instance
         """
         pass
+
 
 class ISyncParticipant(Interface):
     """Interface for components wishing to perform actions upon synchronisation"""
@@ -58,6 +60,7 @@ class ISyncParticipant(Interface):
         """Synchronise repository"""
         pass
 
+
 class IRepositoryObserver(Interface):
     """Events on repository modifications"""
 
@@ -65,14 +68,14 @@ class IRepositoryObserver(Interface):
 
     def repository_post_commit(self, repository, revisions):
         """One or more commits have occured
-        
+
         :param repository: The repository object
         :param revisions: A list of revision strings"""
         pass
 
     def pre_delete_repository(self, repository, project_deletion):
         """Gets called before a repository is deleted
-        
+
         :param repository: The repository that will be deleted
         :param project_deletion: True if the project is being deleted
         """

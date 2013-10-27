@@ -68,6 +68,12 @@ def parameterized(name, fixture):
             for path in repopaths:
                 self.assertFalse(os.path.exists(path), "Repository path was not removed")
 
+                if os.path.basename(os.path.dirname(path)) == "project":
+                    # for the repo types that create project subdirectories,
+                    # ensure they also cleanup that folder
+                    self.assertFalse(os.path.exists(os.path.dirname(path)),
+                            "Repository parent path for project was not removed")
+
     TestProjectOps.__name__ = name
     return TestProjectOps
 
