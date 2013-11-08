@@ -20,8 +20,9 @@ import re
 import os, os.path
 import datetime
 
-from cydra.component import ExtensionPoint, BroadcastAttributeProxy, Interface
-from cydra.repository import IRepository
+from cydra.component import ExtensionPoint
+from cydra.repository.interfaces import IRepositoryProvider
+from cydra.project.interfaces import ISyncParticipant, IProjectObserver
 from cydra.datasource import IDataSource
 from cydra.permission import IPermissionProvider, IUserTranslator
 
@@ -29,17 +30,6 @@ from cydra.util import NoopArchiver, TarArchiver
 
 import logging
 logger = logging.getLogger(__name__)
-
-class ISyncParticipant(Interface):
-    """Interface for components whishing to participate in project synchronisation"""
-
-    _iface_attribute_proxy = BroadcastAttributeProxy()
-
-    def sync_project(self, project):
-        """Sync project
-        
-        :param project: Project instance requesting to be synced
-        :returns: True on success, False on failure. None is ignored"""
 
 def is_valid_project_name(name):
     # disallow certain words that are frequently used for some magic stuff
@@ -54,8 +44,8 @@ def is_valid_project_name(name):
 
 class Project(object):
 
-    #observers = ExtensionPoint(IProjectObserver)
-    _repositories = ExtensionPoint(IRepository)
+    observers = ExtensionPoint(IProjectObserver)
+    _repositories = ExtensionPoint(IRepositoryProvider)
     datasource = ExtensionPoint(IDataSource)
     permission = ExtensionPoint(IPermissionProvider)
     translator = ExtensionPoint(IUserTranslator)
@@ -80,6 +70,13 @@ class Project(object):
         for repotype in self._repositories:
             if repotype.repository_type == type:
                 return repotype.get_repository(self, name)
+
+    def get_repositories(self):
+        """Returns a list of all repositories in this project"""
+        repos = []
+        for repotype in self.get_repository_types():
+            repos.extend(repotype.get_repositories(self))
+        return repos
 
     def get_repository_type(self, repository_type):
         """Convenience function for direct repository type retrieval"""
@@ -118,25 +115,20 @@ class Project(object):
         """Sync all repositories of this project
         
         :returns: False if any of the repositories returned False, True otherwise"""
-        # You might wonder why this function exists instead of the repository provider 
-        # implementing SyncParticipant. Since the Repository class contains sync, all 
+        # You might wonder why this function exists instead of the repository provider
+        # implementing SyncParticipant. Since the Repository class contains sync, all
         # repositories provide this function and we can handle all of them here
-
-        repos = []
-        for repotype in self.get_repository_types():
-            repos.extend(repotype.get_repositories(self))
-
         res = True
 
-        for repo in repos:
-            if repo.sync() == False: # Don't use not here, None should not be considered a failure
+        for repo in self.get_repositories():
+            if repo.sync() == False:  # Don't use not here, None should not be considered a failure
                 res = False
 
         return res
 
     def sync(self):
         """Synchronize the project"""
-        return not any([x == False for x in self.sync_participants.sync_project(self)]) # Don't use not here, None should not be considered a failure
+        return not any([x == False for x in self.sync_participants.sync_project(self)])  # Don't use not here, None should not be considered a failure
 
     def get_archiver(self, filename):
         """Get an archiver for this project"""
@@ -170,6 +162,19 @@ class Project(object):
             logger.warning("Warning, time elapsed between loading and saving project %s was %s", self.name, str(datetime.datetime.now() - self.load_time))
 
         self.datasource.save_project(self)
+
+    def delete(self, archiver=None):
+        if not archiver:
+            archiver = self.get_archiver('project')
+
+        with archiver:
+            # backup project data
+            archiver.dump_as_file(self.data, "project_data")
+
+            # delete everything in the project
+            self.observers.pre_delete_project(self, archiver)
+
+        self.datasource.delete_project(self)
 
     def __eq__(self, other):
         return self.compmgr == other.compmgr and self.name == other.name

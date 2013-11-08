@@ -10,14 +10,17 @@
 	{% if obj == '*' %}project-wide{% endif %}
 {%- endmacro %}
 
-{% macro project_table(projects, show_permissions=False) %}
+{% macro project_table(projects, show_permissions=False, show_actions=False) %}
 <table class="compact projectlist">
 	<thead>
 		<tr>
 			<td>Name</td>
 			{% if show_permissions %}
 			<td>Permissions</td>
-			{% endif %} 
+			{% endif %}
+			{% if show_actions %}
+			<td>Actions</td>
+			{% endif %}
 		</tr>
 	</thead>
 	<tbody>
@@ -31,9 +34,16 @@
 				{% endfor %}
 			</td>
 			{% endif %}
+			{% if show_actions %}
+			<td>
+				{% if cydra_user == project.owner %}
+				<a href="{{ url_for('.confirm_delete_project', projectname = project.name) }}">delete</a>
+				{% endif %}
+			</td>
+			{% endif %}
 		</tr>
 		{% else %}
-		<tr><td{% if show_permissions %} colspan="2"{% endif %}>No projects found</td></tr>
+		<tr><td colspan="{{ 1 + show_permissions|int + show_actions|int }}">No projects found</td></tr>
 		{% endfor %}
 	</tbody>
 </table>

@@ -28,7 +28,7 @@
 	
 	    <h1>Your projects</h1>
 	    <p>
-	    	{{ project_table(owned_projects) }}
+	    	{{ project_table(owned_projects, show_actions=True) }}
 	    </p>
     </div></div>
     <div class="box_right"><div>

@@ -19,21 +19,20 @@
 
 # This file contains code from trac, see trac/loader.py
 
-import os.path
 import pkg_resources
-from pkg_resources import working_set, DistributionNotFound, VersionConflict, UnknownExtra
-import sys
+from pkg_resources import working_set
 
 __all__ = ['load_components']
 
 import logging
 logger = logging.getLogger(__name__)
 
+
 def load_eggs(ch, entry_point, search_path, only_enabled=True):
     """Loader that loads any eggs on the search path and `sys.path`."""
-    
+
     logger.debug("Loading eggs...")
-    
+
     # Note that the following doesn't seem to support unicode search_path
     distributions, errors = working_set.find_plugins(
         pkg_resources.Environment(search_path)
@@ -51,7 +50,7 @@ def load_eggs(ch, entry_point, search_path, only_enabled=True):
     for entry in sorted(working_set.iter_entry_points(entry_point),
                         key=lambda entry: entry.name):
         logger.debug('Loading %s from %s', entry.name, entry.dist.location)
-        
+
         # If we are only loading enabled components, consult the config and skip if
         # not found
         if only_enabled and not any(map(lambda x: x.startswith(entry.name), ch.config.get('components', {}))):
@@ -61,8 +60,10 @@ def load_eggs(ch, entry_point, search_path, only_enabled=True):
         try:
             entry.load(require=True)
         except ImportError, e:
+            ch.failed_components[entry.name] = e
             logger.warn("Loading %s failed, probably because of unmet dependencies: %s", entry.name, str(e))
         except Exception, e:
+            ch.failed_components[entry.name] = e
             logger.exception("Error loading: %s", entry)
         else:
             logger.debug("Loaded module %s from %s", entry.module_name, entry.dist.location)

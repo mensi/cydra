@@ -35,9 +35,10 @@ from cydra.datasource import IDataSource
 from cydra.permission import IPermissionProvider, IUserTranslator, User
 from cydra.caching.subject import ISubjectCache
 
+
 class Cydra(Component, ComponentManager):
     """Main point of integration
-    
+
     This is the main class that figures as the component manager,
     is in charge of keeping track of a configuration and contains
     a set of convenience methods (eg. project retrieval, user lookup)"""
@@ -53,7 +54,7 @@ class Cydra(Component, ComponentManager):
     def reuse_last_instance(cls, *args, **kwargs):
         """Reuse the most recently created :class:`Cydra` instance or create a new one
 
-        By using this class method, you can reuse a previously created instance 
+        By using this class method, you can reuse a previously created instance
         instead of creating a new one."""
 
         if cls._last_instance is not None:

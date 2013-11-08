@@ -18,6 +18,8 @@
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 import os.path
 import pkg_resources
+import shutil
+import uuid
 
 import logging
 logger = logging.getLogger(__name__)
@@ -28,8 +30,8 @@ from cydra.web import IBlueprintProvider
 from cydra.web.frontend.hooks import IRepositoryActionProvider, IProjectActionProvider, IProjectFeaturelistItemProvider
 from cydra.component import Component, implements
 from cydra.cli import ICliProjectCommandProvider
-from cydra.repository import IRepositoryObserver
-from cydra.project import ISyncParticipant as IProjectSyncParticipant
+from cydra.repository.interfaces import IRepositoryObserver
+from cydra.project.interfaces import ISyncParticipant as IProjectSyncParticipant, IProjectObserver
 
 from trac.core import Component as TracComponent, implements as trac_implements
 from trac.env import Environment
@@ -61,6 +63,7 @@ class TracEnvironments(Component):
     implements(IRepositoryActionProvider)
     implements(IProjectFeaturelistItemProvider)
     implements(IProjectSyncParticipant)
+    implements(IProjectObserver)
 
     # this map might look silly right now, but it is not guaranteed that cydra and trac name
     # repository types the same
@@ -175,6 +178,24 @@ class TracEnvironments(Component):
             logger.exception("Caught exception while creating Trac environment in " + self.get_env_path(project))
 
         return False
+
+    def delete(self, project, archiver=None):
+        if not self.has_env(project):
+            return
+
+        if not archiver:
+            archiver = project.get_archiver('trac')
+
+        envpath = self.get_env_path(project)
+        tmppath = os.path.join(os.path.dirname(envpath), uuid.uuid1().hex)
+        os.rename(envpath, tmppath)  # POSIX guarantees this to be atomic.
+
+        with archiver:
+            archiver.add_path(tmppath, 'trac')
+
+        logger.info("Deleted trac installation for project %s: %s", project.name, tmppath)
+
+        shutil.rmtree(tmppath)
 
     def sync_project(self, project):
         """For project.ISyncParticipant"""
@@ -297,6 +318,27 @@ class TracEnvironments(Component):
                         repository.type, repository.name, project.name)
             return False
 
+    def get_tracname_of_repository(self, repository):
+        return repository.project.data.get('plugins', {}).get('trac', {}).get(repository.type, {}).get(repository.name)
+
+    def is_repository_registered(self, repository):
+        return self.has_env(repository.project) and self.get_tracname_of_repository(repository) is not None
+
+    def unregister_repository(self, repository):
+        tracrepo = self.get_tracname_of_repository(repository)
+        if tracrepo is not None and self.has_env(repository.project):
+            # remove it
+            logger.info("Removing repository %s from Trac environment %s", tracrepo, repository.project.name)
+            env = Environment(self.get_env_path(repository.project))
+            DbRepositoryProvider(env).remove_repository(tracrepo)
+
+            # clean up
+            del repository.project.data['plugins']['trac'][repository.type][repository.name]
+            if not repository.project.data['plugins']['trac'][repository.type]:
+                del repository.project.data['plugins']['trac'][repository.type]
+
+            repository.project.save()
+
     def get_cli_project_commands(self):
         return [('trac', self.cli_command)]
 
@@ -400,6 +442,22 @@ class TracEnvironments(Component):
             self.register_repository(repository)
             return redirect(url_for('frontend.project', projectname=projectname))
 
+        @blueprint.route('/project/<projectname>/trac/unregister_repository/<repositorytype>/<repositoryname>', methods=['POST'])
+        def unregister_repository(projectname, repositorytype, repositoryname):
+            project = cydra_instance.get_project(projectname)
+            if project is None:
+                raise NotFound('Unknown project')
+
+            if not project.get_permission(cydra_user, '*', 'admin'):
+                raise InsufficientPermissions()
+
+            repository = project.get_repository(repositorytype, repositoryname)
+            if repository is None:
+                raise NotFound('Unknown repository')
+
+            self.unregister_repository(repository)
+            return redirect(url_for('frontend.project', projectname=projectname))
+
         return blueprint
 
     def get_project_featurelist_items(self, project):
@@ -419,10 +477,10 @@ class TracEnvironments(Component):
 
     def get_repository_actions(self, repository):
         if self.has_env(repository.project):
-            if repository.name not in repository.project.data.get('plugins', {}).get('trac', {}).get(repository.type, {}):
-                return ('Register in Trac', 'trac.register_repository', 'post')
+            if self.is_repository_registered(repository):
+                return ('Unregister from Trac', 'trac.unregister_repository', 'post')
             else:
-                pass  # TODO: deregister
+                return ('Register in Trac', 'trac.register_repository', 'post')
 
     def repository_change_commit(self, repository, revisions):
         self._changeset_event(repository, 'changeset_modified', revisions)
@@ -432,18 +490,16 @@ class TracEnvironments(Component):
         self._changeset_event(repository, 'changeset_added', revisions)
 
     # IRepositoryObserver
-    def pre_delete_repository(self, repository):
-        tracrepo = repository.project.data.get('plugins', {}).get('trac', {}).get(repository.type, {}).get(repository.name)
-        if tracrepo and self.has_env(repository.project):
-            # remove it
-            logger.info("Removing repository %s from Trac environment %s", tracrepo, repository.project.name)
-            env = Environment(self.get_env_path(repository.project))
-            DbRepositoryProvider(env).remove_repository(tracrepo)
+    def pre_delete_repository(self, repository, project_deletion=False):
+        if project_deletion:
+            return  # Ignore, trac is going to be deleted as well anyways
 
-            # clean up
-            del repository.project.data['plugins']['trac'][repository.type][repository.name]
-            if not repository.project.data['plugins']['trac'][repository.type]:
-                del repository.project.data['plugins']['trac'][repository.type]
+        if self.is_repository_registered(repository):
+            self.unregister_repository(repository)
+
+    # IProjectObserver
+    def pre_delete_project(self, project, archiver):
+        self.delete(project, archiver)
 
     def _changeset_event(self, repository, event, revisions):
         project = repository.project

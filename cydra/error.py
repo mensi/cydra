@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 
+
 class CydraError(Exception):
     """Base exception for all errors"""
 
@@ -32,9 +33,10 @@ class CydraError(Exception):
     def __repr__(self):
         return self.__class__.__name__ + '(' + repr(self.msg) + ', ' + ', '.join([x[0] + '=' + repr(x[1]) for x in self._args.items()]) + ')'
 
+
 def create_error(name, msg):
     """Helper function to define new errors
-    
+
     use like this: TestError = create_error("TestError", "Test Message") in modules"""
 
     def new_init(self, **kwargs):
@@ -42,9 +44,10 @@ def create_error(name, msg):
 
     return type(name, (CydraError,), {'__init__': new_init})
 
+
 class InsufficientConfiguration(CydraError):
     """Configuration values missing but needed
-    
+
     Params:
     missing: name of the value
     component: name of component"""
@@ -52,9 +55,10 @@ class InsufficientConfiguration(CydraError):
     def __str__(self):
         return "Configuration is not sufficient for component %s. No value for %s" % (self.component, self.missing)
 
+
 class UnknownRepository(CydraError):
     """Repository that was asked for is unknown
-    
+
     Params:
     repository_name: name of the repository
     repository_type: type of the repository

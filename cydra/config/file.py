@@ -33,6 +33,7 @@ from cydra.config import IConfigurationProvider
 import logging
 logger = logging.getLogger(__name__)
 
+
 class ConfigurationFile(Component):
     implements(IConfigurationProvider)
 
@@ -63,7 +64,7 @@ class ConfigurationFile(Component):
         return [location for location in locations if os.path.exists(location)]
 
     def load_file(self, filename):
-        cfile = open(filename, "r")
+        cfile = codecs.open(filename, "r", "utf-8")
         try:
             return json.load(cfile)
         except ValueError:
@@ -73,9 +74,9 @@ class ConfigurationFile(Component):
                     cfile.seek(0)
                     return load_yaml(cfile)
                 except:
-                    logger.exception("Undable to parse YAML")
+                    logger.exception("Unable to parse YAML")
         finally:
             cfile.close()
-        
+
         logger.error("Unable to parse configfile: " + filename)
         return {}

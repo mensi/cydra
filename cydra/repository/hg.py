@@ -16,14 +16,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
-import os, os.path, stat
+import os.path
+import stat
 import subprocess
 import re
 import ConfigParser
 
 import cydra
-from cydra.component import Component, implements, ExtensionPoint
-from cydra.repository import IRepository, RepositoryParameter, Repository
+from cydra.component import ExtensionPoint
+from cydra.repository import RepositoryProviderComponent, RepositoryParameter, Repository
 from cydra.error import CydraError, InsufficientConfiguration, UnknownRepository
 from cydra.permission import IPermissionProvider
 
@@ -40,15 +41,15 @@ param_contact = RepositoryParameter(
         name='Contact',
         description='Contact for the repository')
 
+
 def is_valid_repository_name(name):
-    if re.match('^[a-z][a-z0-9\-_]{0,31}$', name) is None:
+    if re.match(r'^[a-z][a-z0-9\-_]{0,31}$', name) is None:
         return False
     else:
         return True
 
-class HgRepositories(Component):
 
-    implements(IRepository)
+class HgRepositories(RepositoryProviderComponent):
 
     repository_type = 'hg'
     repository_type_title = 'Mercurial'
@@ -90,7 +91,7 @@ class HgRepositories(Component):
             os.mkdir(os.path.join(self._base, project.name))
 
         hg_cmd = subprocess.Popen([self.hgcommand, 'init', path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, errors = hg_cmd.communicate()
+        _, errors = hg_cmd.communicate()
 
         if hg_cmd.returncode != 0:
             if hg_cmd.returncode == 127:
@@ -101,11 +102,19 @@ class HgRepositories(Component):
 
         repository = HgRepository(self.compmgr, self._base, project, repository_name)
         repository.set_params(**params)
-        repository.sync() # synchronize repository
+        repository.sync()  # synchronize repository
         return repository
 
     def get_params(self):
         return [param_description, param_contact]
+
+    def pre_delete_project(self, project, archiver=None):
+        super(HgRepositories, self).pre_delete_project(project, archiver)
+
+        # clean up project-wise directory after parent has deleted all repositories
+        if os.path.exists(os.path.join(self._base, project.name)):
+            os.rmdir(os.path.join(self._base, project.name))
+
 
 class HgRepository(Repository):
 
@@ -210,10 +219,10 @@ class HgRepository(Repository):
 
         super(HgRepository, self).sync()
 
+
 def commit_hook():
     """Hook for hg"""
     import sys
-    import logging
     from optparse import OptionParser
 
     parser = OptionParser()

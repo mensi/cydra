@@ -16,19 +16,20 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
-
-import os, os.path, stat
+import os.path
+import stat
 import subprocess
 import re
 
 import cydra
-from cydra.component import Component, implements, ExtensionPoint
-from cydra.repository import IRepository, Repository, RepositoryParameter
+from cydra.component import ExtensionPoint
+from cydra.repository import RepositoryProviderComponent, Repository, RepositoryParameter
 from cydra.error import CydraError, InsufficientConfiguration, UnknownRepository
 from cydra.permission import IPermissionProvider
 
+
 def is_valid_repository_name(name):
-    if re.match('^[a-z][a-z0-9\-_]{0,31}$', name) is None:
+    if re.match(r'^[a-z][a-z0-9\-_]{0,31}$', name) is None:
         return False
     else:
         return True
@@ -38,14 +39,13 @@ param_description = RepositoryParameter(
         name='Description',
         description='Description of the repository')
 
-class GitRepositories(Component):
+
+class GitRepositories(RepositoryProviderComponent):
     """Component for git based repositories
-    
+
     Configuration:
     - base: Path to the directory where repositories are stored
     - gitcommand: Path to git command. Defaults to git"""
-
-    implements(IRepository)
 
     repository_type = 'git'
     repository_type_title = 'Git'
@@ -61,7 +61,7 @@ class GitRepositories(Component):
 
     def get_repositories(self, project):
         """Returns a list of repositories for the project
-        
+
         This list is based on the filesystem"""
         if not os.path.exists(os.path.join(self._base, project.name)):
             return []
@@ -84,7 +84,7 @@ class GitRepositories(Component):
 
     def create_repository(self, project, repository_name, **params):
         """Create a new git repository
-        
+
         A repository's name can only contain letters, numbers and dashes/underscores."""
         if not is_valid_repository_name(repository_name):
             raise CydraError("Invalid Repository Name", name=repository_name)
@@ -98,7 +98,7 @@ class GitRepositories(Component):
             os.mkdir(os.path.join(self._base, project.name))
 
         git_cmd = subprocess.Popen([self.gitcommand, 'init', '--bare', path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, errors = git_cmd.communicate()
+        _, errors = git_cmd.communicate()
 
         if git_cmd.returncode != 0:
             if git_cmd.returncode == 127:
@@ -108,14 +108,20 @@ class GitRepositories(Component):
                 raise CydraError('Error encountered while calling git', stderr=errors, code=git_cmd.returncode)
 
         # Customize config
-
         repository = GitRepository(self.compmgr, self._base, project, repository_name)
         repository.set_params(**params)
-        repository.sync() # synchronize repository
+        repository.sync()  # synchronize repository
         return repository
 
     def get_params(self):
         return [param_description]
+
+    def pre_delete_project(self, project, archiver=None):
+        super(GitRepositories, self).pre_delete_project(project, archiver)
+
+        # clean up project-wise directory after parent has deleted all repositories
+        if os.path.exists(os.path.join(self._base, project.name)):
+            os.rmdir(os.path.join(self._base, project.name))
 
     def _repo_exists(self, project, name):
         if not is_valid_repository_name(name):
@@ -124,6 +130,7 @@ class GitRepositories(Component):
         path = os.path.join(self._base, project.name, name + '.git')
 
         return os.path.exists(path)
+
 
 class GitRepository(Repository):
 
@@ -186,6 +193,7 @@ class GitRepository(Repository):
     def has_write_access(self, user):
         return self.project.get_permission(user, 'repository.git.' + self.name, 'write')
 
+
 def post_receive_hook():
     """Hook for git"""
     import sys
@@ -229,4 +237,3 @@ def post_receive_hook():
         repository.notify_post_commit(commits.splitlines()[::-1])
 
     sys.exit(0)
-
