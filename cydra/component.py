@@ -326,7 +326,9 @@ class Component(object):
     def get_component_shortname(self):
         return self.__class__.__name__
 
-    def get_component_config(self, default={}):
+    def get_component_config(self, default=None):
+        if default is None:
+            default = {}
         return self.compmgr.config.get_component_config(self.get_component_name(), default)
 
     @property
