@@ -19,10 +19,10 @@
 from setuptools import setup, find_packages
 
 setup(name='CydraGitServerGlue',
-      install_requires=['Cydra >=0.1', 'GitServerGlue>=0.3'],
+      install_requires=['Cydra >=0.3', 'GitServerGlue>=0.3'],
       description='Cydra plugin for ssh-based repository serving',
       keywords='cydra ssh',
-      version='0.3.2',
+      version='0.4.0',
       url='http://www.cydra.org',
       license='GPL',
       author='Manuel Stocker',

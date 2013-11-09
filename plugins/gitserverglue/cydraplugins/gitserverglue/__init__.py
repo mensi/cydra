@@ -30,7 +30,6 @@ from twisted.python import log
 import cydra
 import cydra.project
 from cydra.component import ExtensionPoint
-from cydra.permission import IUserTranslator, IUserAuthenticator
 from cydra.component import Component, implements
 from cydra.datasource import IPubkeyStore
 from cydra.web.frontend.hooks import IRepositoryViewerProvider, IProjectFeaturelistItemProvider
@@ -78,7 +77,6 @@ class GitServerGlue(Component):
 
 class CydraHelper(object):
 
-    authenticator = ExtensionPoint(IUserAuthenticator)
     pubkey_store = ExtensionPoint(IPubkeyStore)
 
     git_binary = 'git'
@@ -129,11 +127,11 @@ class CydraHelper(object):
         if user is None:
             return False
 
-        return self.authenticator.user_password(user, password)
+        return user.check_password(password)
 
     def check_publickey(self, username, keyblob):
         user = self.compmgr.get_user(username=username)
-        if user is None:
+        if user is None or not user.valid_for_authentication:
             return False
 
         return self.pubkey_store.user_has_pubkey(user, keyblob)
@@ -210,7 +208,7 @@ def run_server():
     parser.add_option('-g', '--group', action='store', dest='group', default=None)
     parser.add_option('-s', '--sshport', action='store', type='int', dest='sshport', default=2222)
     parser.add_option('-w', '--httpport', action='store', type='int', dest='httpport', default=8080)
-    (options, args) = parser.parse_args()
+    (options, _) = parser.parse_args()
 
     if (options.user is None) ^ (options.group is None):
         raise Exception("Both user and group have to be specified")
@@ -229,7 +227,6 @@ def run_server():
         handler = logging.StreamHandler()
 
     handler.setFormatter(formatter)
-    logger = logging.getLogger()
     logger.addHandler(handler)
     logger.setLevel(loglevel)
 
