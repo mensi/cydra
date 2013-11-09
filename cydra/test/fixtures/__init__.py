@@ -16,8 +16,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
+from cydra.test.fixtures.common import HtpasswdUsers
 from cydra.test.fixtures.datasource import *
 from cydra.test.fixtures.repository import *
 
-FullWithFileDS = AllRepositories(FileDatasource())
-FullWithMongoDS = AllRepositories(MongoDatasource())
+FullWithFileDS = HtpasswdUsers(AllRepositories(FileDatasource()))
+FullWithMongoDS = HtpasswdUsers(AllRepositories(MongoDatasource()))

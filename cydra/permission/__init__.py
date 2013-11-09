@@ -16,166 +16,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
-
-from functools import partial
-
-from cydra.component import Interface, Component, implements, ExtensionPoint, FallbackAttributeProxy
+from cydra.permission.interfaces import IPermissionProvider
+from cydra.component import Component, implements, ExtensionPoint
 
 import logging
 logger = logging.getLogger(__name__)
 
 virtual_owner_permissions = {'admin': True, 'owner': True}
 
-class PermissionProviderAttributeProxy(object):
-    """Attribute Proxy object for permission providers"""
-
-    def __init__(self):
-        pass
-
-    def __call__(self, interface, components, name):
-        return partial(getattr(self, name), components)
-
-    def get_permissions(self, components, project, user, object):
-        perms = {}
-
-        for provider in components:
-            if hasattr(provider, 'get_permissions'):
-                perms.update(provider.get_permissions(project, user, object))
-
-        return perms
-
-    def get_group_permissions(self, components, project, group, object):
-        perms = {}
-
-        for provider in components:
-            if hasattr(provider, 'get_group_permissions'):
-                perms.update(provider.get_group_permissions(project, group, object))
-
-        return perms
-
-    def get_permission(self, components, project, user, object, permission):
-        value = None
-
-        for provider in components:
-            if hasattr(provider, 'get_permission'):
-                value = provider.get_permission(project, user, object, permission)
-
-            if value is not None:
-                return value
-
-    def get_group_permission(self, components, project, group, object, permission):
-        value = None
-
-        for provider in components:
-            if hasattr(provider, 'get_group_permission'):
-                value = provider.get_group_permission(project, group, object, permission)
-
-            if value is not None:
-                return value
-
-    def set_permission(self, components, project, user, object, permission, value=None):
-        for provider in components:
-            if hasattr(provider, 'set_permission') and provider.set_permission(project, user, object, permission, value):
-                return True
-
-    def set_group_permission(self, components, project, group, object, permission, value=None):
-        for provider in components:
-            if hasattr(provider, 'set_group_permission') and provider.set_group_permission(project, group, object, permission, value):
-                return True
-
-    def get_projects_user_has_permissions_on(self, components, user):
-        projects = set()
-
-        for provider in components:
-            if hasattr(provider, 'get_projects_user_has_permissions_on'):
-                projects.update(provider.get_projects_user_has_permissions_on(user))
-
-        return projects
-
-class IPermissionProvider(Interface):
-    """Used to lookup permissions for a user
-    
-    Permissions are given for a userid,object tuple. A permission provider 
-    can either return True (user has the specified permission on the specified object), 
-    False (user does not have the permission) or None (provider has no authority)
-    """
-
-    _iface_attribute_proxy = PermissionProviderAttributeProxy()
-
-    def get_permissions(self, project, user, object):
-        """Retrieve all permissions a user has on a certain object
-        
-        :param project: project instance. If None is supplied, global permissions are checked
-        :param user: User object. user of '*' means any user/guest access. None will enumerate all users
-        :param object: object (dotted, hierarchical string) or None to enumerate all objects
-            
-        :return: dict of permission: value entries or a dict of object: {permission: value} entries if object is None"""
-        pass
-
-    def get_group_permissions(self, project, group, object):
-        """Retrieve all permissions a group has on a certain object
-        
-        :param project: project instance. If None is supplied, global permissions are checked
-        :param group: Group object
-        :param object: object (dotted, hierarchical string) or None to enumerate all objects
-            
-        :return: dict of permission: value entries or a dict of object: {permission: value} entries if object is None"""
-        pass
-
-    def get_permission(self, project, user, object, permission):
-        """Test if the user has this permission
-        
-        :param project: project instance. If None is supplied, global permissions are checked
-        :param user: userid. user of '*' means any user/guest access
-        :param object: object (dotted, hierarchical string)
-        :param permission: permission (eg: read, write, view, edit, ...)
-        
-        :return: True if the user has this permission, False if not and None if undefined in this provider"""
-        pass
-
-    def get_group_permission(self, project, group, object, permission):
-        """Test if the group has this permission
-        
-        :param project: project instance. If None is supplied, global permissions are checked
-        :param group: Group object
-        :param object: object (dotted, hierarchical string)
-        :param permission: permission (eg: read, write, view, edit, ...)
-        
-        :return: True if the user has this permission, False if not and None if undefined in this provider"""
-        pass
-
-    def set_permission(self, project, user, object, permission, value=None):
-        """Set or unset the permission
-        
-        :param project: project instance. If None is supplied, global permissions are set
-        :param user: userid. user of '*' means any user/guest access
-        :param object: object (dotted, hierarchical string)
-        :param permission: permission (eg: read, write, view, edit, ...)
-        
-        :return: True if successfully set, None if this provider is not authoritative for this tuple"""
-        pass
-
-    def set_group_permission(self, project, group, object, permission, value=None):
-        """Set or unset the permission
-        
-        :param project: project instance. If None is supplied, global permissions are set
-        :param group: Group object
-        :param object: object (dotted, hierarchical string)
-        :param permission: permission (eg: read, write, view, edit, ...)
-        
-        :return: True if successfully set, None if this provider is not authoritative for this tuple"""
-        pass
-
-    def get_projects_user_has_permissions_on(self, userid):
-        """Get all projects a user has permissions on
-        
-        :param userid: User to test for
-        
-        :return: List of projects
-        """
-        pass
 
 class Subject(object):
+    id = None
+
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.id)
 
@@ -193,6 +45,7 @@ class Subject(object):
 
     def __cmp__(self, other):
         return cmp(self.id, other.id)
+
 
 class Group(Subject):
     """Represents a group"""
@@ -212,16 +65,21 @@ class Group(Subject):
     def id(self):
         return self.groupid
 
+
 class User(Subject):
     """Represents a user
-    
-    Note that a user with userid '*' is considered an anonymous, unauthenticatable 
+
+    Note that a user with userid '*' is considered an anonymous, unauthenticatable
     guest user. The username and full_name should be set to 'Guest' in this case."""
 
     userid = None
     username = None
     full_name = None
     groups = []
+
+    supports_check_password = False
+    supports_set_password = False
+    valid_for_authentication = False
 
     def __init__(self, component_manager, userid, **kwargs):
         self.compmgr = component_manager
@@ -239,90 +97,80 @@ class User(Subject):
     def id(self):
         return self.userid
 
+    def check_password(self, password):
+        if not self.is_guest:
+            logger.warn('Trying to check password on %s that does not support password checking %r (%r)', self.__class__, self.full_name, self.userid)
+        return False
 
-class IUserTranslator(Interface):
-    """Translates various aspects of users"""
+    def set_password(self, password):
+        logger.warn('Trying to set password on %s that does not support password setting %r (%r)', self.__class__, self.full_name, self.userid)
+        return False
 
-    _iface_attribute_proxy = FallbackAttributeProxy()
-
-    def username_to_user(self, username):
-        """Given a username (what a user can use to log in) find the user
-        
-        :returns: a User object on success, None on failure"""
-        pass
-
-    def userid_to_user(self, userid):
-        """Given a userid find the user
-        
-        A translator should construct a guest user if the userid is '*'."""
-        pass
-
-    def groupid_to_group(self, userid):
-        """Given a groupid find the group
-        
-        :returns: a Group object on success, None on failure"""
-        pass
-
-class IUserAuthenticator(Interface):
-    """Authenticate users"""
-
-    _iface_attribute_proxy = FallbackAttributeProxy()
-
-    def user_password(self, user, password):
-        """Authenticate users by user and password"""
-        pass
 
 def object_walker(obj):
     parts = obj.split('.')
     numparts = len(parts)
-    for i, part in enumerate(parts):
+    for i, _ in enumerate(parts):
         yield '.'.join(parts[0:numparts - i])
 
     if obj != '*':
         yield '*'
+
 
 class StaticGlobalPermissionProvider(Component):
     """Global permissions defined in config"""
 
     implements(IPermissionProvider)
 
-    def get_permissions(self, project, user, object):
-        if project is not None:
+    def get_configured_user_perms(self, user):
+        """Get the applicable part of the config depending on the user"""
+        if user.is_guest:
+            return self.component_config.get("guest_permissions", {})
+        else:
+            section = self.component_config.get("user_permissions", {})
+            if user.id in section:
+                return section[user.id]
+            elif user.username in section:
+                return section[user.username]
+            else:
+                return section.get('*', {})
+
+    def get_permissions(self, project, user, obj):
+        if project is not None or user is None:
             return {}
 
-        if user is not None and not user.is_guest and object == 'projects':
-            return {'create': True}
+        return self.get_configured_user_perms(user).get(obj, {})
 
-    def get_group_permissions(self, project, group, object):
+    def get_group_permissions(self, project, group, obj):
         return {}
 
-    def get_permission(self, project, user, object, permission):
-        if project is not None:
+    def get_permission(self, project, user, obj, permission):
+        if project is not None or user is None:
             return None
 
-        if user is not None and not user.is_guest and object == 'projects' and permission == 'create':
-            return True
+        return self.get_configured_user_perms(user).get(obj, {}).get(permission)
 
-    def get_group_permission(self, project, group, object, permission):
+    def get_group_permission(self, project, group, obj, permission):
         return None
 
-    def set_permission(self, project, user, object, permission, value=None):
+    def set_permission(self, project, user, obj, permission, value=None):
         return None
 
-    def set_group_permission(self, project, group, object, permission, value=None):
+    def set_group_permission(self, project, group, obj, permission, value=None):
         return None
 
     def get_projects_user_has_permissions_on(self, userid):
         return []
 
+
 class InternalPermissionProvider(Component):
     """Stores permissions in the project's dict
-    
+
     Example::
-    
+
     'permissions': {
-        '*': {'object': ['read']},
-        'user': {'*': ['admin']}
+        '*': {'repository.svn': {'read': True}},
+        'user1': {'*': {'admin': True}}
     }
     """
 
@@ -534,11 +382,3 @@ class InternalPermissionProvider(Component):
         res.update(self.compmgr.get_projects_owned_by(user))
         return res
 
-class NopTranslator(Component):
-    """Dummy user translator"""
-
-    def username_to_user(self, username):
-        return User(self.compmgr, username)
-
-    def userid_to_user(self, userid):
-        return User(self.compmgr, userid)

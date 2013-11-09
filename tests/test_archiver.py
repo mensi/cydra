@@ -16,10 +16,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
-import os
 import os.path
 import subprocess
-from cydra.test.fixtures import *
+from cydra.test.fixtures import FixtureWithTempPath, FullWithFileDS
 from cydra.test import getConfiguredTestCase
 
 
@@ -36,7 +35,7 @@ def parameterized(name, fixture):
         """Tests for archiver"""
 
         def test_archive_on_delete(self):
-            project = self.cydra.datasource.create_project('test', self.cydra.get_user(userid='*'))
+            project = self.cydra.create_project('test', self.cydra.get_user(userid='*'))
             self.assertTrue(project, "Project creation failed")
 
             # set some arbitrary conf values we can check for

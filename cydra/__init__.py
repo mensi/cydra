@@ -32,7 +32,8 @@ from cydra.component import ComponentManager, Component, ExtensionPoint
 from cydra.loader import load_components
 from cydra.config import Configuration
 from cydra.datasource import IDataSource
-from cydra.permission import IPermissionProvider, IUserTranslator, User
+from cydra.permission import User
+from cydra.permission.interfaces import IUserStore, IPermissionProvider, IUserTranslator
 from cydra.caching.subject import ISubjectCache
 
 
@@ -46,6 +47,7 @@ class Cydra(Component, ComponentManager):
     datasource = ExtensionPoint(IDataSource)
     permission = ExtensionPoint(IPermissionProvider)
     translator = ExtensionPoint(IUserTranslator)
+    user_store = ExtensionPoint(IUserStore)
     subject_cache = ExtensionPoint(ISubjectCache)
 
     _last_instance = None
@@ -76,6 +78,9 @@ class Cydra(Component, ComponentManager):
 
         # Update last instance to allow instance reusing
         Cydra._last_instance = self
+
+    def get_guest_user(self):
+        return self.get_user(userid='*')
 
     def get_user(self, userid=None, username=None):
         """Convenience function for user retrieval"""
@@ -108,6 +113,13 @@ class Cydra(Component, ComponentManager):
                 result = self.translator.username_to_user(username)
 
         if result is None:
+            if userid is not None:
+                # since we got a specific userid, we can construct a dummy user object
+                # with the userid and dummy values for everything else.
+                # This is usually a good idea since asking for a specific userid means
+                # the user at least existed at some time. This provides a safe default
+                # for these cases
+                return User(self, userid=userid, full_name="N/A (" + userid + ")")
             return result
 
         # update caches
@@ -115,6 +127,10 @@ class Cydra(Component, ComponentManager):
             cache.add_users([result])
 
         return result
+
+    def create_user(self, **kwargs):
+        userid = self.user_store.create_user(**kwargs)
+        return self.get_user(userid=userid)
 
     def get_group(self, groupid):
         """Convenience function for group retrieval"""
@@ -148,6 +164,13 @@ class Cydra(Component, ComponentManager):
 
     def get_project(self, name):
         return self.datasource.get_project(name)
+
+    def create_project(self, projectname, owner):
+        """Create a project
+
+        :param projectname: The name of the project
+        :param owner: User object of the owner of this project"""
+        return self.datasource.create_project(projectname, owner)
 
     def get_projects(self, *args, **kwargs):
         return self.datasource.list_projects(*args, **kwargs)

@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 import os.path
-from cydra.test.fixtures import *
+from cydra.test.fixtures import FullWithFileDS, FullWithMongoDS
 from cydra.test import getConfiguredTestCase
 
 
@@ -27,7 +27,7 @@ def parameterized(name, fixture):
 
         def test_create(self):
             user = self.cydra.get_user(userid='*')
-            proj1 = self.cydra.datasource.create_project('project1', user)
+            proj1 = self.cydra.create_project('project1', user)
             self.assertTrue(proj1, "Project creation failed")
 
             proj2 = self.cydra.get_project('project1')
@@ -35,12 +35,13 @@ def parameterized(name, fixture):
             self.assertEqual(proj1, proj2, "Project retrieved is not the same as the created project")
             self.assertEqual(proj2.owner, user, "User of created project is not correct")
 
-            self.assertIsNone(self.cydra.datasource.create_project('project1', user), "Duplicate project creation possible")
+            self.assertIsNone(self.cydra.create_project('project1', user), "Duplicate project creation possible")
 
         def test_delete(self):
-            project1 = self.cydra.datasource.create_project('project1', self.cydra.get_user(userid='*'))
-            project2 = self.cydra.datasource.create_project('project2', self.cydra.get_user(userid='*'))
-            self.assertTrue(project1, "Project creation failed")
+            project1 = self.cydra.create_project('project1', self.cydra.get_user(userid='*'))
+            project2 = self.cydra.create_project('project2', self.cydra.get_user(userid='*'))
+            self.assertTrue(project1, "Project 1 creation failed")
+            self.assertTrue(project2, "Project 2 creation failed")
 
             project1_2nd = self.cydra.get_project('project1')
             self.assertTrue(project1_2nd, "Unable to get created project")
@@ -52,7 +53,7 @@ def parameterized(name, fixture):
             self.assertIsNotNone(self.cydra.get_project('project2'), "Project2 was errornously deleted")
 
         def test_delete_with_repos(self):
-            project = self.cydra.datasource.create_project('project', self.cydra.get_user(userid='*'))
+            project = self.cydra.create_project('project', self.cydra.get_user(userid='*'))
             repopaths = []
 
             for repotype in project.get_repository_types():

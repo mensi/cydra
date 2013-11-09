@@ -18,6 +18,7 @@
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 from cydra.test.fixtures.common import FixtureWithTempPath, chain_fixtures
 
+
 class GitRepositories(FixtureWithTempPath):
     """Configure Cydra for local git repositories"""
 
@@ -25,12 +26,14 @@ class GitRepositories(FixtureWithTempPath):
         super(GitRepositories, self).setUp(configDict)
         configDict.setdefault('components', {}).setdefault('cydra.repository.git.GitRepositories', {})['base'] = self.path
 
+
 class MercurialRepositories(FixtureWithTempPath):
     """Configure Cydra for local mercurial repositories"""
 
     def setUp(self, configDict):
         super(MercurialRepositories, self).setUp(configDict)
         configDict.setdefault('components', {}).setdefault('cydra.repository.hg.HgRepositories', {})['base'] = self.path
+
 
 class SubversionRepositories(FixtureWithTempPath):
     """Configure Cydra for local subversion repositories"""

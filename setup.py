@@ -18,12 +18,11 @@
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 
-import sys
 from setuptools import setup, find_packages
 
 setup(
     name='Cydra',
-    version='0.2',
+    version='0.3',
     description='Code hosting platform',
     long_description="Cydra provides a platform to build code hosting services similar to systems like sourceforge or google code",
     author='Manuel Stocker',
@@ -58,7 +57,7 @@ setup(
         cydra-git-post-receive = cydra.repository.git:post_receive_hook
         cydra-hg-commit = cydra.repository.hg:commit_hook
         cydra-svn-commit = cydra.repository.svn:commit_hook
-        
+
         [cydra.config]
         cydra.config.file = cydra.config.file
 

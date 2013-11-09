@@ -17,19 +17,21 @@
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 import re
-import os, os.path
+import os
+import os.path
 import datetime
 
 from cydra.component import ExtensionPoint
 from cydra.repository.interfaces import IRepositoryProvider
 from cydra.project.interfaces import ISyncParticipant, IProjectObserver
 from cydra.datasource import IDataSource
-from cydra.permission import IPermissionProvider, IUserTranslator
+from cydra.permission.interfaces import IPermissionProvider, IUserTranslator
 
 from cydra.util import NoopArchiver, TarArchiver
 
 import logging
 logger = logging.getLogger(__name__)
+
 
 def is_valid_project_name(name):
     # disallow certain words that are frequently used for some magic stuff
@@ -37,10 +39,11 @@ def is_valid_project_name(name):
         return False
 
     # only allow alphanumeric names
-    if re.match('^[a-zA-Z][a-zA-Z0-9\-_]{0,31}$', name) is None:
+    if re.match(r'^[a-zA-Z][a-zA-Z0-9\-_]{0,31}$', name) is None:
         return False
     else:
         return True
+
 
 class Project(object):
 
@@ -48,7 +51,6 @@ class Project(object):
     _repositories = ExtensionPoint(IRepositoryProvider)
     datasource = ExtensionPoint(IDataSource)
     permission = ExtensionPoint(IPermissionProvider)
-    translator = ExtensionPoint(IUserTranslator)
     sync_participants = ExtensionPoint(ISyncParticipant)
 
     def __init__(self, component_manager, data):
@@ -65,10 +67,10 @@ class Project(object):
     def owner(self):
         return self.compmgr.get_user(userid=self.data['owner'])
 
-    def get_repository(self, type, name):
+    def get_repository(self, repository_type, name):
         """Convenience function for direct repository lookup"""
         for repotype in self._repositories:
-            if repotype.repository_type == type:
+            if repotype.repository_type == repository_type:
                 return repotype.get_repository(self, name)
 
     def get_repositories(self):
@@ -87,33 +89,33 @@ class Project(object):
     def get_repository_types(self):
         return self._repositories
 
-    def get_permissions(self, user, object):
+    def get_permissions(self, user, obj):
         """Convenience function for permission enumeration"""
-        return self.permission.get_permissions(self, user, object)
+        return self.permission.get_permissions(self, user, obj)
 
-    def get_permission(self, user, object, permission):
+    def get_permission(self, user, obj, permission):
         """Convenience function for permission retrieval"""
-        return self.permission.get_permission(self, user, object, permission)
+        return self.permission.get_permission(self, user, obj, permission)
 
-    def set_permission(self, user, object, permission, value):
+    def set_permission(self, user, obj, permission, value):
         """Convenience function for permission retrieval"""
-        return self.permission.set_permission(self, user, object, permission, value)
+        return self.permission.set_permission(self, user, obj, permission, value)
 
-    def get_group_permissions(self, group, object):
+    def get_group_permissions(self, group, obj):
         """Convenience function for permission enumeration"""
-        return self.permission.get_group_permissions(self, group, object)
+        return self.permission.get_group_permissions(self, group, obj)
 
-    def get_group_permission(self, group, object, permission):
+    def get_group_permission(self, group, obj, permission):
         """Convenience function for permission retrieval"""
-        return self.permission.get_group_permission(self, group, object, permission)
+        return self.permission.get_group_permission(self, group, obj, permission)
 
-    def set_group_permission(self, group, object, permission, value):
+    def set_group_permission(self, group, obj, permission, value):
         """Convenience function for permission retrieval"""
-        return self.permission.set_group_permission(self, group, object, permission, value)
+        return self.permission.set_group_permission(self, group, obj, permission, value)
 
     def sync_repositories(self):
         """Sync all repositories of this project
-        
+
         :returns: False if any of the repositories returned False, True otherwise"""
         # You might wonder why this function exists instead of the repository provider
         # implementing SyncParticipant. Since the Repository class contains sync, all
