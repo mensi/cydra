@@ -1,0 +1,16 @@
+{% extends "frontend_base.jhtml" %}
+{% from 'util.jhtml' import prettyprint_user, render_permission, repository_link with context %}
+{% block title %} Delete Project: {{ project.name }}{% endblock %}
+{% block content %}
+<div class="box_center">
+	<h1>Delete Project &laquo;{{ project.name }}&raquo;?</h1>
+	<p>
+		Are you sure you want to delete the project &laquo;{{ project.name }}&raquo;? All associated data 
+		will be lost, including any repositories.
+	</p>
+	<form method="post" action="{{ url_for('.delete_project', projectname=project.name) }}">
+		<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+		<input type="submit" value="yes, delete everything" />
+	</form>
+</div>
+{% endblock %}
