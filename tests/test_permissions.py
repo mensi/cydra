@@ -22,13 +22,16 @@ from cydra.test import getConfiguredTestCase
 
 def parameterized(name, fixture):
     class TestPermissions(getConfiguredTestCase(fixture,
-            create_users=[{'username': 'test', 'full_name': 'Tester Testesterus'}],
-            create_projects={'test': 'test'})):
+            create_users=[{'username': 'owner', 'full_name': 'Test Owner'},
+                          {'username': 'test', 'full_name': 'Tester Testesterus'}],
+            create_projects={'test': 'owner'})):
         """Tests for permissions"""
 
-        def test_project_set_permission(self):
+        def test_project_set_get_permission(self):
             self.project_test.set_permission(self.user_test, 'some_object', 'read', True)
             self.assertTrue(self.project_test.get_permission(self.user_test, 'some_object', 'read'))
+            self.assertEqual(self.project_test.get_permissions(self.user_test, None), {'some_object': {'read': True}})
+            self.assertEqual(self.project_test.get_permissions(self.user_test, 'some_object'), {'read': True})
 
     TestPermissions.__name__ = name
     return TestPermissions
