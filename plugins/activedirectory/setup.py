@@ -2,10 +2,10 @@
 from setuptools import setup, find_packages
 
 setup(name='CydraActiveDirectory',
-      install_requires=['Cydra >=0.1', 'python-ldap'],
+      install_requires=['Cydra >=0.3', 'python-ldap'],
       description='Cydra plugin for AD integration',
       keywords='cydra active directory',
-      version='0.1',
+      version='0.2',
       url='',
       license='',
       author='Manuel Stocker',
