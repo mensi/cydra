@@ -22,8 +22,6 @@ from cydra.component import Component, implements, ExtensionPoint
 import logging
 logger = logging.getLogger(__name__)
 
-virtual_owner_permissions = {'admin': True, 'owner': True}
-
 
 class Subject(object):
     id = None
@@ -179,6 +177,13 @@ class InternalPermissionProvider(Component):
     MODE_GROUP, MODE_USER = range(2)
     PERMISSION_ROOT = {MODE_GROUP: 'group_permissions', MODE_USER: 'permissions'}
 
+    def __init__(self):
+        config = self.get_component_config()
+
+        self.project_owner_permissions = config.get('project_owner_permissions',
+            {'admin': True, 'owner': True}
+        )
+
     def get_permissions(self, project, user, obj):
         return self._get_permissions(self.MODE_USER, project, user, obj)
 
@@ -213,7 +218,7 @@ class InternalPermissionProvider(Component):
 
             # Inject global owner permissions if necessary
             if mode == self.MODE_USER:
-                res.setdefault(project.owner, {}).setdefault('*', {}).update(virtual_owner_permissions)
+                res.setdefault(project.owner, {}).setdefault('*', {}).update(self.project_owner_permissions)
 
             return res
 
@@ -240,7 +245,7 @@ class InternalPermissionProvider(Component):
 
             # Inject global owner permissions if necessary
             if mode == self.MODE_USER:
-                res.setdefault(project.owner, {}).update(virtual_owner_permissions)
+                res.setdefault(project.owner, {}).update(self.project_owner_permissions)
 
             return res
 
@@ -262,9 +267,9 @@ class InternalPermissionProvider(Component):
         # this is the owner, Inject global owner perms
         if mode == self.MODE_USER and project.owner == subject:
             if obj is None:
-                res.setdefault('*', {}).update(virtual_owner_permissions)
+                res.setdefault('*', {}).update(self.project_owner_permissions)
             else:
-                res.update(virtual_owner_permissions)
+                res.update(self.project_owner_permissions)
 
         # also inject all group permissions
         if mode == self.MODE_USER:

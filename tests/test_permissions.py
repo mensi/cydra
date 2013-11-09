@@ -20,12 +20,12 @@ from cydra.test.fixtures import FullWithFileDS
 from cydra.test import getConfiguredTestCase
 
 
-def parameterized(name, fixture):
-    class TestPermissions(getConfiguredTestCase(fixture,
+def parameterizedGeneric(name, fixture):
+    class TestGenericPermissions(getConfiguredTestCase(fixture,
             create_users=[{'username': 'owner', 'full_name': 'Test Owner'},
                           {'username': 'test', 'full_name': 'Tester Testesterus'}],
             create_projects={'test': 'owner'})):
-        """Tests for permissions"""
+        """Generic tests for permissions, require user store"""
 
         def test_project_set_get_permission(self):
             self.project_test.set_permission(self.user_test, 'some_object', 'read', True)
@@ -33,7 +33,56 @@ def parameterized(name, fixture):
             self.assertEqual(self.project_test.get_permissions(self.user_test, None), {'some_object': {'read': True}})
             self.assertEqual(self.project_test.get_permissions(self.user_test, 'some_object'), {'read': True})
 
-    TestPermissions.__name__ = name
-    return TestPermissions
+        def test_project_owner_has_admin(self):
+            self.assertIn('admin', self.project_test.get_permissions(self.user_owner, '*'))
+            self.assertTrue(self.project_test.get_permissions(self.user_owner, '*')['admin'])
+            self.assertTrue(self.project_test.get_permission(self.user_owner, '*', 'admin'))
 
-TestPermissions_File = parameterized("TestPermissions_File", FullWithFileDS)
+        def test_project_owner_admin_permission_cannot_be_overwritten(self):
+            self.project_test.set_permission(self.user_owner, '*', 'admin', None)
+            self.assertTrue(self.project_test.get_permission(self.user_owner, '*', 'admin'))
+            self.project_test.set_permission(self.user_owner, '*', 'admin', False)
+            self.assertTrue(self.project_test.get_permission(self.user_owner, '*', 'admin'))
+
+    TestGenericPermissions.__name__ = name
+    return TestGenericPermissions
+
+
+def parameterizedInternalProviderOwner(name, fixture):
+    class TestInternalProviderOwnerPermissions(getConfiguredTestCase(fixture,
+            config={
+                'components': {
+                    'cydra.permission.InternalPermissionProvider': {
+                        'project_owner_permissions':
+                            {'admin': True, 'manuallyconfigured': True}
+                    }
+                }
+            },
+            create_users=[{'username': 'owner', 'full_name': 'Test Owner'},
+                          {'username': 'test', 'full_name': 'Tester Testesterus'}],
+            create_projects={'test': 'owner'})):
+        """Test that the internal permission provider properly takes owner permissions from config"""
+
+        def test_project_owner_permissions(self):
+            self.assertEqual(self.project_test.get_permissions(self.user_owner, None), {'*': {'admin': True, 'manuallyconfigured': True}})
+            self.assertEqual(self.project_test.get_permissions(self.user_owner, '*'), {'admin': True, 'manuallyconfigured': True})
+            self.assertEqual(self.project_test.get_permissions(self.user_owner, 'some_object'), {'admin': True, 'manuallyconfigured': True})
+
+        def test_project_owner_permissions_cannot_be_overwritten(self):
+            self.project_test.set_permission(self.user_owner, '*', 'admin', None)
+            self.assertEqual(self.project_test.get_permissions(self.user_owner, None), {'*': {'admin': True, 'manuallyconfigured': True}})
+            self.project_test.set_permission(self.user_owner, '*', 'admin', False)
+            self.assertEqual(self.project_test.get_permissions(self.user_owner, None), {'*': {'admin': True, 'manuallyconfigured': True}})
+
+        def test_project_owner_permissions_get_properly_merged(self):
+            self.project_test.set_permission(self.user_owner, '*', 'foo', True)
+            self.assertEqual(self.project_test.get_permissions(self.user_owner, None), {'*': {'admin': True, 'manuallyconfigured': True, 'foo': True}})
+            self.assertEqual(self.project_test.get_permissions(self.user_owner, '*'), {'admin': True, 'manuallyconfigured': True, 'foo': True})
+
+    TestInternalProviderOwnerPermissions.__name__ = name
+    return TestInternalProviderOwnerPermissions
+
+
+
+TestPermissionsGeneric_File = parameterizedGeneric("TestPermissionsGeneric_File", FullWithFileDS)
+TestPermissionsInternalProvider_File = parameterizedInternalProviderOwner("TestPermissionsInternalProvider_File", FullWithFileDS)

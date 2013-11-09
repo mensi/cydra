@@ -8,12 +8,16 @@ from cydra import Cydra
 from cydra.permission import User
 
 
-def getConfiguredTestCase(fixture, create_users=None, create_projects=None):
+def getConfiguredTestCase(fixture, config=None, create_users=None, create_projects=None):
     class ConfiguredTestCase(ProcessHelpers, unittest.TestCase):
         def setUp(self):
-            config = {}
-            fixture.setUp(config)
-            self.cydra = Cydra(config)
+            active_config = {}
+
+            if config is not None:
+                active_config = config
+
+            fixture.setUp(active_config)
+            self.cydra = Cydra(active_config)
 
             if create_users is not None:
                 for user in create_users:
