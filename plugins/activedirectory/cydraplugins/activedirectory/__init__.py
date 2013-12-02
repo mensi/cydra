@@ -196,11 +196,14 @@ class ADUsers(Component):
         if not user or not password:
             return False
 
+	logger.debug("Trying to perform AD auth for %r" % user)
         try:
             conn = ldap.initialize(self.get_component_config()['uri'])
             conn.simple_bind_s(user.userid, password)
+            conn.unbind_s()
         except ldap.INVALID_CREDENTIALS:
             logger.exception("Authentication failed")
             return False
 
+        logger.debug("AD auth complete")
         return True
