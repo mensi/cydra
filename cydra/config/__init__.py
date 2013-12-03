@@ -44,6 +44,33 @@ class MergeException(Exception):
     pass
 
 
+def merge(dest, source):
+    """Merges a subtree into a subtree of the config
+
+    Recurses into dicts
+
+    :param dest: Object to merge into.
+                 This should be a node of the config tree
+    :param source: Source for merge.
+    """
+    if type(dest) != type(source):
+        raise MergeException("Types do not match: %s, %s" % (
+                            type(dest).__name__, type(source).__name__))
+
+    if isinstance(dest, dict):
+        for k, v in source.iteritems():
+            if isinstance(v, dict):
+                merge(dest.setdefault(k, dict()), v)
+            elif isinstance(v, list):
+                dest.setdefault(k, list()).extend(v)
+            elif isinstance(v, set):
+                dest.setdefault(k, set()).update(v)
+            else:
+                dest[k] = v
+    else:
+        raise MergeException("Unhandled type: " + type(dest).__name__)
+
+
 class Configuration(Component):
     """Encapsulates the configuration
 
@@ -136,7 +163,7 @@ class Configuration(Component):
                 plugin_paths_dirty = True
             else:
                 if isinstance(v, dict):
-                    self.merge(self._data.setdefault(k, dict()), v)
+                    merge(self._data.setdefault(k, dict()), v)
                 elif isinstance(v, list):
                     self._data.setdefault(k, list()).extend(v)
                 elif isinstance(v, set):
@@ -147,29 +174,3 @@ class Configuration(Component):
         if plugin_paths_dirty:
             # new plugin paths, load from those
             load_components(self.cydra, self._data.get('plugin_paths', set()))
-
-    def merge(self, dest, source):
-        """Merges a subtree into a subtree of the config
-
-        Recurses into dicts
-
-        :param dest: Object to merge into.
-                     This should be a node of the config tree
-        :param source: Source for merge.
-        """
-        if type(dest) != type(source):
-            raise MergeException("Types do not match: %s, %s" % (
-                                type(dest).__name__, type(source).__name__))
-
-        if isinstance(dest, dict):
-            for k, v in source.iteritems():
-                if isinstance(v, dict):
-                    self.merge(dest.setdefault(k, dict()), v)
-                elif isinstance(v, list):
-                    dest.setdefault(k, list()).extend(v)
-                elif isinstance(v, set):
-                    dest.setdefault(k, set()).update(v)
-                else:
-                    dest[k] = v
-        else:
-            raise MergeException("Unhandled type: " + type(dest).__name__)

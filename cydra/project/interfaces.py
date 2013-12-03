@@ -37,6 +37,13 @@ class IProjectObserver(Interface):
 
     _iface_attribute_proxy = BroadcastAttributeProxy()
 
+    def post_create_project(self, project):
+        """Called just after the project has been created
+
+        3rd party components can use this event to initialize
+        necessary configuration either on themselves or the
+        newly created project"""
+
     def pre_delete_project(self, project, archiver):
         """Called prior to project deletion
 
