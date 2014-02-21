@@ -30,4 +30,6 @@ class StaticDefaultConfigurator(Component):
 
     def post_create_project(self, project):
         config = self.component_config.get("config", {})
+        logger.debug("Extending project %s with config %r", project.name, config)
         merge(project.data, config)
+        project.save()
