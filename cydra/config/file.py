@@ -28,7 +28,7 @@ except:
     pass
 
 from cydra.component import Component, implements
-from cydra.config import IConfigurationProvider
+from cydra.config import IConfigurationProvider, merge
 
 import logging
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class ConfigurationFile(Component):
             cfiles.extend(self.find_default_locations())
 
         for cfile in cfiles:
-            self.compmgr.config.merge(config, self.load_file(cfile))
+            merge(config, self.load_file(cfile))
 
         return config
 
