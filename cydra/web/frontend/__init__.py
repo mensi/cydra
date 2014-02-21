@@ -244,7 +244,7 @@ def create_project():
         flash('There already exists a project with this name', 'error')
         return redirect(url_for('.userhome'))
 
-    project = cydra_instance.datasource.create_project(projectname, cydra_user)
+    project = cydra_instance.create_project(projectname, cydra_user)
     if project:
         flash('Successfully created new project', 'success')
         return redirect(url_for('.project', projectname=projectname))
