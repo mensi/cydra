@@ -21,12 +21,14 @@ import socket
 from cydra.test.fixtures.common import FixtureWithTempPath
 from cydra.test.procutils import MonitoredDaemon
 
+
 class FileDatasource(FixtureWithTempPath):
     """Configure Cydra with the file datasource"""
 
     def setUp(self, configDict):
         super(FileDatasource, self).setUp(configDict)
         configDict.setdefault('components', {}).setdefault('cydra.datasource.file.FileDataSource', {})['base'] = self.path
+
 
 class MongoDatasource(FixtureWithTempPath):
     """Configure Cydra with the mongoDB datasource and spawn a MongoDB instance"""

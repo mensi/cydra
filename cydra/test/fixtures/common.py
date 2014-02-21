@@ -18,6 +18,8 @@
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 import tempfile
 import shutil
+import os.path
+
 
 class Fixture(object):
     inner = None
@@ -37,12 +39,14 @@ class Fixture(object):
         if self.inner is not None:
             self.inner.checkHealth()
 
+
 def chain_fixtures(*args):
     def instantiator(inner=None):
         for fixture in args:
             inner = fixture(inner)
         return inner
     return instantiator
+
 
 class FixtureWithTempPath(Fixture):
     """A fixture that creates a temporary directory"""
@@ -56,3 +60,17 @@ class FixtureWithTempPath(Fixture):
         shutil.rmtree(self.path)
         super(FixtureWithTempPath, self).tearDown()
 
+
+class HtpasswdUsers(FixtureWithTempPath):
+    """Configure Cydra to use a htpasswd file"""
+
+    def setUp(self, configDict):
+        super(HtpasswdUsers, self).setUp(configDict)
+
+        path = os.path.join(self.path, '.htpasswd')
+
+        with open(path, "w") as f:
+            f.write("")
+
+        configDict.setdefault('components', {}).setdefault('cydra.permission.htpasswd.HtpasswdUsers', {})['file'] = path
+        configDict.setdefault('components', {}).setdefault('cydra.permission.InternalPermissionProvider', True)

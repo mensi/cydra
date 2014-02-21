@@ -19,28 +19,27 @@
 import urllib
 
 import cydra
-from cydra.component import ExtensionPoint
-from cydra.permission import IUserTranslator, IUserAuthenticator
 from cydra.util import SimpleCache
 
 import logging
 logger = logging.getLogger(__name__)
 
+
 def is_urldecode_necessary(useragent):
     """Determine if this user agent needs a manual urldecode of the credentials
-    
+
     Some user agents do not properly urldecode the credentials that have been supplied
     on the URI. git before version 1.7.3.2 is a prominent case."""
     if useragent.startswith('git/'):
         # git got urldecode support in 1.7.3.2 (commit: f39f72d8cf03b61407f64460eba3357ec532280e)
-        # the useragent is usually: git/x.x.x.x 
-        # but msysgit can do things like git/x.x.x.msysgit.x or x.x.x.x.msysgit.x 
+        # the useragent is usually: git/x.x.x.x
+        # but msysgit can do things like git/x.x.x.msysgit.x or x.x.x.x.msysgit.x
         #
         # this is too simple: gitversion = tuple([int(x) for x in useragent[4:].split('.')])
-        gitversion = useragent[4:].split('.') # split
-        gitversion = [int(x) if x.isdigit() else 0 for x in gitversion] # make ints, replace text with 0
+        gitversion = useragent[4:].split('.')  # split
+        gitversion = [int(x) if x.isdigit() else 0 for x in gitversion]  # make ints, replace text with 0
         if len(gitversion) < 4:
-            gitversion.extend(0 for x in range(0, 4 - len(gitversion))) # pad with 0 to get 4 components
+            gitversion.extend(0 for x in range(0, 4 - len(gitversion)))  # pad with 0 to get 4 components
         gitversion = tuple(gitversion)
 
         logger.debug("Detected git version number %r", gitversion)
@@ -49,14 +48,16 @@ def is_urldecode_necessary(useragent):
             return True
     return False
 
+
 class InsufficientPermissions(Exception):
     pass
+
 
 class AuthenticationMiddleware(object):
 
     def __init__(self, cyd, next_app):
         """Initialize Middleware
-        
+
         :param cyd: Cydra instance"""
         self.compmgr = cyd
         self.next_app = next_app
@@ -69,7 +70,7 @@ class AuthenticationMiddleware(object):
 
         try:
             return self.next_app(environ, start_response)
-        except InsufficientPermissions as e:
+        except InsufficientPermissions:
             if user.is_guest:
                 start_response('401 Unauthorized', [('Content-Type', 'text/plain'), ('WWW-Authenticate', 'Basic realm="' + self.compmgr.config.get('web').get('auth_realm').encode('utf-8') + '"')])
                 return "Unauthorized"
@@ -77,10 +78,8 @@ class AuthenticationMiddleware(object):
                 start_response('403 Forbidden', [('Content-Type', 'text/plain')])
                 return "Forbidden"
 
-class HTTPBasicAuthenticator(object):
 
-    translator = ExtensionPoint(IUserTranslator)
-    authenticator = ExtensionPoint(IUserAuthenticator)
+class HTTPBasicAuthenticator(object):
 
     def __init__(self, cyd=None):
         if cyd is None:
@@ -123,7 +122,7 @@ class HTTPBasicAuthenticator(object):
 
             userid, pw = userpw_base64.decode('base64').split(':', 1)
 
-            # yes, you probably don't want to leak information about a password 
+            # yes, you probably don't want to leak information about a password
             # such as its length into the log. The length helps to debug issues with extra
             # whitespace though
             logger.debug('Got user "%s" with passwordlen %d. Agent: %s', userid, len(pw), environ.get('HTTP_USER_AGENT', 'None'))
@@ -133,7 +132,7 @@ class HTTPBasicAuthenticator(object):
                 userid = urllib.unquote(userid)
                 pw = urllib.unquote(pw)
 
-            user = self.translator.username_to_user(userid)
+            user = self.cydra.get_user(username=userid)
             if user is None:
                 logger.debug('Lookup for %s failed', userid)
                 user = self.cydra.get_user(userid='*')
@@ -144,7 +143,7 @@ class HTTPBasicAuthenticator(object):
                 logger.info('User %s resolved to guest', userid)
                 return user
 
-            elif self.authenticator.user_password(user, pw):
+            elif user.check_password(pw):
                 # login successful, we can now set REMOTE_USER for further use
                 environ['REMOTE_USER'] = user.userid
                 environ['cydra_user'] = user
@@ -164,7 +163,7 @@ class HTTPBasicAuthenticator(object):
                 user = self.cache.get(userid)
                 environ['cydra_user'] = user
             else:
-                user = self.translator.username_to_user(userid)
+                user = self.cydra.get_user(username=userid)
 
                 if user is None:
                     logger.debug('Lookup for %s failed', userid)
@@ -176,14 +175,12 @@ class HTTPBasicAuthenticator(object):
 
             return user
 
-class WSGIAuthnzHelper(object):
 
-    translator = ExtensionPoint(IUserTranslator)
-    authenticator = ExtensionPoint(IUserAuthenticator)
+class WSGIAuthnzHelper(object):
 
     def __init__(self, environ_to_perm, cyd=None):
         """Initialize Authnz helper
-        
+
         :param environ_to_perm: Callable that returns the project or project name and the object an environment corresponds to as a tuple(project, object)"""
 
         if cyd is None:
@@ -194,17 +191,17 @@ class WSGIAuthnzHelper(object):
 
     def check_password(self, environ, username, password):
         """Function for WSGIAuthUserScript
-        
-        Authenticates the user regardless of environment"""
-        user = self.translator.username_to_user(username)
 
-        return self.authenticator.user_password(user, password)
+        Authenticates the user regardless of environment"""
+        user = self.cydra.get_user(username=username)
+
+        return user.check_password(password)
 
     def groups_for_user(self, environ, username):
         """Function for WSGIAuthGroupScript
-        
+
         Returns the permissions a user has on the object corresponding to the environment"""
-        user = self.translator.username_to_user(username)
+        user = self.cydra.get_user(username=username)
 
         project, obj = self.environ_to_perm(environ)
 
@@ -216,17 +213,19 @@ class WSGIAuthnzHelper(object):
 
         return [perm.encode('utf-8') for (perm, value) in project.get_permissions(user, obj).items() if value == True]
 
+
 def require_authorization(environ, start_response, realm='cydra', msg=''):
     start_response('401 Unauthorized', [('Content-Type', 'text/plain'), ('WWW-Authenticate', 'Basic realm="' + realm + '"')])
     return msg
 
+
 def move_projectname_into_scriptname(environ, projectname):
     """Moves the project name from PATH_INFO to SCRIPT_NAME
-    
+
     Example:
-    
+
     /some/path/project/repository/more
-     SCRIPT   | PATH INFO        
+     SCRIPT   | PATH INFO
     ->
      SCRIPT           |  PATH INFO"""
 

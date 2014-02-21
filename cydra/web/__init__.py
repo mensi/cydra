@@ -21,18 +21,19 @@ from functools import wraps
 
 import cydra
 from cydra.component import ExtensionPoint, Interface
-from cydra.permission import IUserTranslator, IUserAuthenticator
 
 __all__ = ['IBlueprintProvider', 'create_app', 'standalone_serve']
 
 import logging
 logger = logging.getLogger(__name__)
 
+
 class IBlueprintProvider(Interface):
     """Components providing blueprints for the website"""
 
     def get_blueprint(self):
         pass
+
 
 def create_app(cyd=None):
     """Create the web interface WSGI application"""
@@ -97,7 +98,8 @@ def create_app(cyd=None):
 
     # some utility template filters
     from cydra.web.filters import filters
-    map(app.template_filter(), filters)
+    #map(app.template_filter(), filters)
+    _ = [app.template_filter()(f) for f in filters]
 
     # prevent flask from handling exceptions
     app.debug = True
@@ -117,17 +119,19 @@ def create_app(cyd=None):
 
     return app
 
+
 def add_shorthands_to_context():
     from flask import request
 
     return dict(cydra_user=request.environ['cydra_user'])
+
 
 class ThemeDetector(object):
     def __init__(self, default_theme=None):
         self.default_theme = default_theme
 
     def __call__(self):
-        from flask import request, g
+        from flask import g
 
         if self.default_theme is not None:
             g.theme = self.default_theme
@@ -141,6 +145,7 @@ def login():
         raise InsufficientPermissions()
 
     return redirect(url_for('frontend.userhome'))
+
 
 def standalone_serve():
     """Standalone WSGI Server for debugging purposes"""
@@ -157,6 +162,5 @@ def standalone_serve():
     #app = ProfilerMiddleware(app, stream=open('profile_stats.txt', 'w'), accum_count=100, sort_by=('cumulative', 'calls'), restrictions=(.1,))
 
     run_simple('0.0.0.0', port, app, use_reloader=True,
-            use_debugger=True, #use_evalex=True,
+            use_debugger=True,  # use_evalex=True,
             )
-

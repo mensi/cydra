@@ -18,44 +18,49 @@
 # along with Cydra.  If not, see http://www.gnu.org/licenses
 import os.path
 import re
+import warnings
 
 import ldap
 from ldap.ldapobject import ReconnectLDAPObject
 
 from cydra.component import Component, implements
-from cydra.permission import IUserTranslator, IUserAuthenticator, User, Group
+from cydra.permission import User, Group
+from cydra.permission.interfaces import IUserTranslator, IUserAuthenticator
 
 import logging
 logger = logging.getLogger(__name__)
 
 LDAP_ESCAPES = {
-    '*':  '\\2A',
-    '(':  '\\28',
-    ')':  '\\29',
+    '*': '\\2A',
+    '(': '\\28',
+    ')': '\\29',
     '\\': '\\5C',
     '\0': '\\00',
 }
 _ldap_escape_pat = re.compile('|'.join(re.escape(k) for k in LDAP_ESCAPES.keys()))
 
+
 def ldap_escape(s):
     return _ldap_escape_pat.sub(lambda x: LDAP_ESCAPES[x.group()], s)
+
 
 def force_unicode(txt):
     try:
         return unicode(txt)
     except UnicodeDecodeError:
         pass
-    
+
     orig = txt
     if type(txt) != str:
         txt = str(txt)
-        
+
     for args in [('utf-8',), ('latin1',), ('ascii', 'replace')]:
         try:
             return txt.decode(*args)
         except UnicodeDecodeError:
             pass
     raise ValueError("Unable to force %s object %r to unicode" % (type(orig).__name__, orig))
+
 
 class LdapLookup(object):
 
@@ -89,7 +94,7 @@ class LdapLookup(object):
         return self.get(basedn, **dict([(ldap_escape(k), ldap_escape(v)) for k, v in kw.iteritems()]))
 
     def get(self, basedn, **kw):
-        search = '(&%s)' %  ''.join(['(%s=%s)' % item for item in kw.iteritems()])
+        search = '(&%s)' % ''.join(['(%s=%s)' % item for item in kw.iteritems()])
         result = self.connection.search_s(basedn, ldap.SCOPE_SUBTREE, search)
         return result
 
@@ -130,6 +135,20 @@ class LdapLookup(object):
             return res[0]
 
 
+class ADUser(User):
+
+    valid_for_authentication = True
+    supports_check_password = True
+    supports_set_password = False
+
+    def __init__(self, adusers, userid, **kwargs):
+        super(ADUser, self).__init__(adusers.compmgr, userid, **kwargs)
+        self._adusers = adusers
+
+    def check_password(self, password):
+        return self._adusers.user_password(self, password)
+
+
 class ADUsers(Component):
 
     implements(IUserAuthenticator)
@@ -150,7 +169,8 @@ class ADUsers(Component):
 
     def userid_to_user(self, userid):
         if userid is None or userid == '*':
-            return User(self.compmgr, '*', username='Guest', full_name='Guest')
+            warnings.warn("You should not call this directly. Use cydra.get_user()", DeprecationWarning, stacklevel=2)
+            return self.compmgr.get_user(userid='*')
 
         user = self._ldap_to_user(self.ldap.get_user(userid))
         if user is None:
@@ -173,9 +193,9 @@ class ADUsers(Component):
         else:
             groups = []
 
-        return User(self.compmgr, 
-                userobj['userPrincipalName'][0], 
-                username=userobj['sAMAccountName'][0], 
+        return ADUser(self,
+                userobj['userPrincipalName'][0],
+                username=userobj['sAMAccountName'][0],
                 full_name=force_unicode(userobj['displayName'][0]), groups=groups)
 
     def groupid_to_group(self, groupid):
@@ -199,7 +219,7 @@ class ADUsers(Component):
 	logger.debug("Trying to perform AD auth for %r" % user)
         try:
             conn = ldap.initialize(self.get_component_config()['uri'])
-            conn.simple_bind_s(user.userid, password)
+            conn.simple_bind_s(user.id, password)
             conn.unbind_s()
         except ldap.INVALID_CREDENTIALS:
             logger.exception("Authentication failed")

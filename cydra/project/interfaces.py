@@ -19,6 +19,7 @@
 
 from cydra.component import Interface, BroadcastAttributeProxy
 
+
 class ISyncParticipant(Interface):
     """Interface for components whishing to participate in project synchronisation"""
 
@@ -26,9 +27,10 @@ class ISyncParticipant(Interface):
 
     def sync_project(self, project):
         """Sync project
-        
+
         :param project: Project instance requesting to be synced
         :returns: True on success, False on failure. None is ignored"""
+
 
 class IProjectObserver(Interface):
     """Interface for various informational events on projects"""
@@ -37,11 +39,11 @@ class IProjectObserver(Interface):
 
     def pre_delete_project(self, project, archiver):
         """Called prior to project deletion
-        
-        3rd party components should delete project-dependent 
-        resources and deregister links to this project when 
+
+        3rd party components should delete project-dependent
+        resources and deregister links to this project when
         handling this call
-        
+
         :param project: The project to be deleted
         :param archiver: Archiver instance if archiving is desired
         """
