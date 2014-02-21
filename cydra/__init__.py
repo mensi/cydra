@@ -35,6 +35,7 @@ from cydra.datasource import IDataSource
 from cydra.permission import User
 from cydra.permission.interfaces import IUserStore, IPermissionProvider, IUserTranslator
 from cydra.caching.subject import ISubjectCache
+from cydra.project.interfaces import IProjectObserver
 
 
 class Cydra(Component, ComponentManager):
@@ -49,6 +50,7 @@ class Cydra(Component, ComponentManager):
     translator = ExtensionPoint(IUserTranslator)
     user_store = ExtensionPoint(IUserStore)
     subject_cache = ExtensionPoint(ISubjectCache)
+    project_observers = ExtensionPoint(IProjectObserver)
 
     _last_instance = None
 
@@ -170,7 +172,9 @@ class Cydra(Component, ComponentManager):
 
         :param projectname: The name of the project
         :param owner: User object of the owner of this project"""
-        return self.datasource.create_project(projectname, owner)
+        project = self.datasource.create_project(projectname, owner)
+        self.project_observers.post_create_project(project)
+        return project
 
     def get_projects(self, *args, **kwargs):
         return self.datasource.list_projects(*args, **kwargs)

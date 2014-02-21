@@ -69,6 +69,7 @@ setup(
         cydra.repository.svn = cydra.repository.svn
         cydra.caching.subject = cydra.caching.subject
         cydra.permission.htpasswd = cydra.permission.htpasswd
+        cydra.project.configurators = cydra.project.configurators
     """,
 
     packages=find_packages(),
