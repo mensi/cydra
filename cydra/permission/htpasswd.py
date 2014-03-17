@@ -25,7 +25,8 @@ class HtpasswdUser(User):
         self.htpasswd = htpasswdusers.htpasswd
 
     def check_password(self, password):
-        return self.htpasswd.user_password(self, password)
+        self.htpasswd.load_if_changed()
+        return self.htpasswd.check_password(self.userid, password)
 
     def set_password(self, password):
         self.htpasswd.load_if_changed()
