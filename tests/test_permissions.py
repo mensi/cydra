@@ -82,7 +82,55 @@ def parameterizedInternalProviderOwner(name, fixture):
     TestInternalProviderOwnerPermissions.__name__ = name
     return TestInternalProviderOwnerPermissions
 
+def parameterizedStaticPermissions(name, fixture):
+    class TestStaticPermissions(getConfiguredTestCase(fixture,
+            config={
+                'components': {
+                    'cydra.permission.StaticPermissionProvider': {
+                        'global_user_permissions':
+                            {'*': {'projects': {'create': True}},
+                             'test': {'projects': {'foobar': False}}},
+                        'global_group_permissions':
+                            {},
+                        'user_permissions':
+                            {'test': {'test': {'*': {'read': True}}}},
+                        'group_permissions':
+                            {}
+                    }
+                }
+            },
+            create_users=[{'username': 'owner', 'full_name': 'Test Owner'},
+                          {'username': 'test', 'full_name': 'Tester Testesterus'}],
+            create_projects={'test': 'owner'})):
+        """Test that the internal permission provider properly takes owner permissions from config"""
+
+        def test_global_permissions(self):
+            self.assertEqual(self.cydra.get_permissions(self.user_owner, None), {'projects': {'create': True}})
+            self.assertEqual(self.cydra.get_permissions(self.user_owner, 'projects'), {'create': True})
+            self.assertTrue(self.cydra.get_permission(self.user_owner, 'projects', 'create'))
+
+            self.assertTrue(self.cydra.get_permission(self.user_test, 'projects', 'create'))
+            self.assertFalse(self.cydra.get_permission(self.user_test, 'projects', 'foobar'))
+
+            # The following test should pass as well, however this has not yet been implemented!
+            #self.assertEqual(self.cydra.get_permissions(self.user_test, None), {'projects': {'create': True, 'foobar': False}})
+
+        def test_global_guest_permissions(self):
+            guest = self.cydra.get_user('*')
+            self.assertEqual(self.cydra.get_permission(guest, 'projects', 'create'), None)
+            self.assertEqual(self.cydra.get_permission(guest, 'projects', 'foobar'), None)
+            self.assertEqual(self.cydra.get_permissions(guest, None), {})
+            self.assertEqual(self.cydra.get_permissions(guest, 'projects'), {})
+
+        def test_user_permissions(self):
+            self.assertEqual(self.project_test.get_permissions(self.user_test, None), {'*': {'read': True}})
+            self.assertEqual(self.project_test.get_permissions(self.user_test, 'foobar'), {'read': True})
+            self.assertTrue(self.project_test.get_permission(self.user_test, 'foobar', 'read'))
+
+    TestStaticPermissions.__name__ = name
+    return TestStaticPermissions
 
 
 TestPermissionsGeneric_File = parameterizedGeneric("TestPermissionsGeneric_File", FullWithFileDS)
 TestPermissionsInternalProvider_File = parameterizedInternalProviderOwner("TestPermissionsInternalProvider_File", FullWithFileDS)
+TestPermissionsStaticProvider_File = parameterizedStaticPermissions("TestPermissionsStaticProvider_File", FullWithFileDS)

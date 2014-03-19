@@ -16,10 +16,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Cydra.  If not, see http://www.gnu.org/licenses
+import copy
+
 from cydra.permission.interfaces import IPermissionProvider
 from cydra.component import Component, implements, ExtensionPoint
 
 import logging
+from argparse import ArgumentError
 logger = logging.getLogger(__name__)
 
 
@@ -36,12 +39,14 @@ class Subject(object):
         return hash(self.id)
 
     def __eq__(self, other):
-        return self.id == other.id
+        return self.id == other.id and self.__class__ == other.__class__
 
     def __ne__(self, other):
-        return self.id != other.id
+        return self.id != other.id or self.__class__ != other.__class__
 
     def __cmp__(self, other):
+        if self.__class__ != other.__class__:
+            raise ValueError("Trying to compare {0} with {1}".format(self.__class__, other.__class__))
         return cmp(self.id, other.id)
 
 
@@ -106,59 +111,187 @@ class User(Subject):
 
 
 def object_walker(obj):
+    """Enumerates prefixes of a hierarchical object string
+
+    For example, the string `'foo.bar.baz'` will yield:
+    * `'foo.bar.baz'`
+    * `'foo.bar'`
+    * `'foo'`
+    * `'*'`
+    """
     parts = obj.split('.')
     numparts = len(parts)
-    for i, _ in enumerate(parts):
-        yield '.'.join(parts[0:numparts - i])
+    for i in range(numparts):
+        yield '.'.join(parts[:numparts - i])
 
     if obj != '*':
         yield '*'
 
 
-class StaticGlobalPermissionProvider(Component):
-    """Global permissions defined in config"""
+class DictBasedPermissionProvider(Component):
+    """Base for permissions providers using a dict for storage"""
 
     implements(IPermissionProvider)
 
-    def get_configured_user_perms(self, user):
-        """Get the applicable part of the config depending on the user"""
-        if user.is_guest:
-            return self.component_config.get("guest_permissions", {})
-        else:
-            section = self.component_config.get("user_permissions", {})
-            if user.id in section:
-                return section[user.id]
-            elif user.username in section:
-                return section[user.username]
-            else:
-                return section.get('*', {})
+    abstract = True
 
     def get_permissions(self, project, user, obj):
-        if project is not None or user is None:
-            return {}
-
-        return self.get_configured_user_perms(user).get(obj, {})
+        pass
 
     def get_group_permissions(self, project, group, obj):
-        return {}
+        pass
 
-    def get_permission(self, project, user, obj, permission):
-        if project is not None or user is None:
+    def _get_permissions(self, permission_dict, subject_translator, project, subject, obj):
+        """Return permissions based on"""
+        res = {}
+
+        # if both subject and obj are None, return all (subject, obj, perm)
+        # copy whole structure to prevent side effects
+        if subject is None and obj is None:
+            for s, objs in permission_dict.items():
+                s = subject_translator(s)
+                res[s] = {}
+                for o, perm in objs:
+                    res[s][o] = perm.copy()
+
+            return res
+
+        # construct a list of objects in the hierarchy
+        if obj is not None:
+            objparts = list(object_walker(obj))
+            objparts.reverse()
+
+        # if subject is none, find all subjects and return all (subject, perm)
+        # we know here that obj is not none as we handled subject none and obj none
+        # case above
+        if subject is None:
+            for s, p in permission_dict.items():
+                s = subject_translator(s)
+
+                res[s] = {}
+                for o in objparts:
+                    if o in p:
+                        res[s].update(p[o].copy())
+
+                # delete empty entries
+                if res[s] == {}:
+                    del res[s]
+
+            return res
+
+        # subject is given.
+        # in case of user mode, we also check the guest account
+        subjects = [subject.id]
+        if isinstance(subject, User):
+            subjects.append('*')
+
+        for p in [permission_dict[x] for x in subjects if x in permission_dict]:
+            if obj is not None:
+                for o in objparts:
+                    if o in p:
+                        res.update(p[o].copy())
+            else:
+                for o in p:
+                    res[o] = p[o].copy()
+
+        # also inject all group permissions
+        if isinstance(subject, User):
+            for group in [x for x in subject.groups if x is not None]:  # safeguard against failing translators
+                res.update(self.get_group_permissions(project, group, obj))
+
+        return res
+
+    def _get_permission(self, permission_dict, project, subject, obj, permission):
+        if subject is None or obj is None or permission is None:
             return None
 
-        return self.get_configured_user_perms(user).get(obj, {}).get(permission)
+        subject_translator = self.compmgr.get_group if isinstance(subject, Group) else self.compmgr.get_user
+        permissions = self._get_permissions(permission_dict, subject_translator, project, subject, None)
 
-    def get_group_permission(self, project, group, obj, permission):
+        for o in object_walker(obj):
+            if o in permissions:
+                return permissions[o].get(permission)
+
         return None
 
+
+class StaticPermissionProvider(DictBasedPermissionProvider):
+    """Handle permissions defined in config
+
+    Global (ie. non project specific) permissions can be defined::
+
+    'global_user_permissions': {'*': {'projects': {'create': True}},
+                                'user1': {'projects': {'create': True}}}
+    'global_group_permissions': {'*': {'projects': {'create': True}}}
+
+    As well as project specific/for all projects::
+
+    'user_permissions': {'*': {'user1': {'*': {'admin': True}}}}
+    'group_permissions': {'proj1': {'group1': {'repository.svn.*': {'admin': True}}}}
+
+    Note that the user '*' is restricted to any logged-in users
+    to prevent unintentional access rights for non-logged-in guests."""
+
+    implements(IPermissionProvider)
+
+    def _get_user_base(self, project, user):
+        if user is not None and user.is_guest:
+            return {}
+
+        if project is None:
+            return self.component_config.get('global_user_permissions', {})
+        if project.name in self.component_config.get('user_permissions', {}):
+            return self.component_config.get('user_permissions')[project.name]
+        return self.component_config.get('user_permissions', {}).get('*', {})
+
+    def _get_group_base(self, project):
+        if project is None:
+            return self.component_config.get('global_group_permissions', {})
+        if project.name in self.component_config.get('group_permissions', {}):
+            return self.component_config.get('group_permissions')[project.name]
+        return self.component_config.get('group_permissions', {}).get('*', {})
+
+    def get_permissions(self, project, user, obj):
+        base = self._get_user_base(project, user)
+        return self._get_permissions(base, self.compmgr.get_user, project, user, obj)
+
+    def get_group_permissions(self, project, group, obj):
+        base = self._get_group_base(project)
+        return self._get_permissions(base, self.compmgr.get_group, project, group, obj)
+
+    def get_permission(self, project, user, obj, permission):
+        base = self._get_user_base(project, user)
+        return self._get_permission(base, project, user, obj, permission)
+
+    def get_group_permission(self, project, group, obj, permission):
+        base = self._get_group_base(project)
+        return self._get_permission(base, project, group, obj, permission)
+
+    def get_projects_user_has_permissions_on(self, user):
+        projects = set()
+
+        for projectid, perms in self.component_config.get('user_permissions', {}):
+            if user.id in perms or '*' in perms:
+                if projectid == '*':
+                    pass  # TODO
+                else:
+                    projects.add(projectid)
+
+        for projectid, perms in self.component_config.get('group_permissions', {}):
+            if any(group.id in perms for group in user.groups):
+                if projectid == '*':
+                    pass  # TODO
+                else:
+                    projects.add(projectid)
+
+        return [self.compmgr.get_project(x) for x in projects]
+
+    # Set operations are not supported...
     def set_permission(self, project, user, obj, permission, value=None):
         return None
 
     def set_group_permission(self, project, group, obj, permission, value=None):
         return None
-
-    def get_projects_user_has_permissions_on(self, userid):
-        return []
 
 
 class InternalPermissionProvider(Component):
@@ -292,15 +425,8 @@ class InternalPermissionProvider(Component):
         if obj is None:
             return None
 
-        # Resolve root of permissions and translator
-        # depending on what we try to find
+        # Resolve root of permissions depending on what we try to find
         permroot = self.PERMISSION_ROOT[mode]
-        if mode == self.MODE_USER:
-            translator = self.compmgr.get_user
-        elif mode == self.MODE_GROUP:
-            translator = self.compmgr.get_group
-        else:
-            raise ValueError('Unknown mode')
 
         # the owner can do everything
         if mode == self.MODE_USER and project.owner == subject:
@@ -386,4 +512,3 @@ class InternalPermissionProvider(Component):
             res.update(set([project for project in self.compmgr.get_projects_where_key_exists(['group_permissions', group.id]) if any(project.data.get('group_permissions', {}).get(group.id, {}).values())]))
         res.update(self.compmgr.get_projects_owned_by(user))
         return res
-
